@@ -20,6 +20,7 @@
         </config-file>
         <header-file src="src/ios/CDVServiceWorker.h" />
         <source-file src="src/ios/CDVServiceWorker.m" />
+        <framework src="JavaScriptCore.framework" />
     </platform>
 
 </plugin>

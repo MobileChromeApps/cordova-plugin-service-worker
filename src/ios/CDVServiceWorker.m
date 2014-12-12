@@ -18,6 +18,7 @@
  */
 
 #import <Cordova/CDV.h>
+#import <JavaScriptCore/JavaScriptCore.h>
 #import "CDVServiceWorker.h"
 
 @implementation CDVServiceWorker
@@ -36,4 +37,34 @@
     else NSLog(@"No service worker script defined");
 }
 
+- (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
+{
+    // Extract the arguments.
+    NSString* scriptUrl = [command argumentAtIndex:0];
+    NSDictionary* options = [command argumentAtIndex:1];
+
+    // Create a JS context.
+    JSContext* context = [JSContext new];
+
+    // Read the ServiceWorker script.
+    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/js/%@", scriptUrl]];
+    NSError* error;
+    NSString* serviceWorkerScript = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+
+    if (error) {
+        NSLog(@"Could not read ServiceWorker script: %@", [error description]);
+        // TODO(maxw): Send the appropriate PluginResult.
+        return;
+    }
+
+    // Evaluate the ServiceWorker script.
+    [context evaluateScript:serviceWorkerScript];
+
+    // Save the JS context.
+    [self setContext:context];
+
+    // TODO(maxw): Send the appropriate PluginResult.
+}
+
 @end
+
