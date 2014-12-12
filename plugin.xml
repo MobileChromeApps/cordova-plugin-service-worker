@@ -10,4 +10,16 @@
     <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
         <clobbers target="navigator.serviceWorker" />
     </js-module>
+
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="ServiceWorker">
+                <param name="ios-package" value="CDVServiceWorker" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+        <header-file src="src/ios/CDVServiceWorker.h" />
+        <source-file src="src/ios/CDVServiceWorker.m" />
+    </platform>
+
 </plugin>
