@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+           id="org.apache.cordova.serviceworker"
+      version="0.0.1-dev">
+    <name>ServiceWorker</name>
+    <description>ServiceWorker Plugin</description>
+    <license>Apache 2.0</license>
+    <keywords>cordova,serviceworker</keywords>
+
+    <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
+        <clobbers target="navigator.serviceWorker" />
+    </js-module>
+</plugin>
