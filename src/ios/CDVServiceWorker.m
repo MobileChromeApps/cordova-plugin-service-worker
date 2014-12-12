@@ -24,16 +24,16 @@
 
 - (void)pluginInitialize
 {
-}
-
-
-- (id)initWithWebView:(UIWebView*)theWebView
-{
-    self = (CDVServiceWorker*)[super initWithWebView:theWebView];
-    if (self) {
+    NSString *serviceworker = nil;
+    if([self.viewController isKindOfClass:[CDVViewController class]]) {
+        CDVViewController *vc = (CDVViewController *)self.viewController;
+        NSMutableDictionary *settings = vc.settings;
+        serviceworker = [settings objectForKey:@"service_worker"];
     }
-
-    return self;
+    if (serviceworker != nil) {
+        NSLog(@"%@", serviceworker);
+    }
+    else NSLog(@"No service worker script defined");
 }
 
 @end
