@@ -21,7 +21,7 @@
 
 @interface CDVServiceWorker : CDVPlugin {}
 
-@property (nonatomic, copy) JSContext* context;
+@property (nonatomic, retain) JSContext* context;
 
 @end
 
