@@ -10,6 +10,12 @@
     <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
         <clobbers target="navigator.serviceWorker" />
     </js-module>
+    <js-module src="www/serviceworkerregistration.js" name="ServiceWorkerRegistration">
+        <clobbers target="ServiceWorkerRegistration" />
+    </js-module>
+    <js-module src="www/serviceworker.js" name="ServiceWorker">
+        <clobbers target="ServiceWorker" />
+    </js-module>
 
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
