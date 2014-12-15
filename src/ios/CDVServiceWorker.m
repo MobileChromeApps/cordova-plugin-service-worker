@@ -35,6 +35,11 @@
         NSLog(@"%@", serviceworker);
     }
     else NSLog(@"No service worker script defined");
+
+    NSString *sw = [self readServiceWorkerScriptFromFile:serviceworker];
+    if (sw != nil) {
+        NSLog(@"%@", [sw substringToIndex:[sw length] > 100 ? 100 : [sw length]]);
+    }
 }
 
 - (NSString *)readServiceWorkerScriptFromFile:(NSString*)filename
