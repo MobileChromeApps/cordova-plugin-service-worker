@@ -37,6 +37,21 @@
     else NSLog(@"No service worker script defined");
 }
 
+- (NSString *)readServiceWorkerScriptFromFile:(NSString*)filename
+{
+    // Read the ServiceWorker script.
+    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/%@", filename]];
+    NSError* error;
+    NSString* serviceWorkerScript = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+
+    if (error) {
+        NSLog(@"Could not read ServiceWorker script: %@", [error description]);
+        return nil;
+    }
+
+    return serviceWorkerScript;
+}
+
 - (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
 {
     // Extract the arguments.
@@ -47,12 +62,9 @@
     JSContext* context = [JSContext new];
 
     // Read the ServiceWorker script.
-    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/js/%@", scriptUrl]];
-    NSError* error;
-    NSString* serviceWorkerScript = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+    NSString* serviceWorkerScript = [self readServiceWorkerScriptFromFile:scriptUrl];
 
-    if (error) {
-        NSLog(@"Could not read ServiceWorker script: %@", [error description]);
+    if (serviceWorkerScript == nil) {
         // TODO(maxw): Send the appropriate PluginResult.
         return;
     }
