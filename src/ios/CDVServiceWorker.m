@@ -25,8 +25,18 @@
 
 @synthesize context=_context;
 
+- (NSString *)hashForString:(NSString *)string
+{
+    return @"7";
+}
+
 - (void)pluginInitialize
 {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    Boolean serviceWorkerInstalled = [defaults boolForKey:@"ServiceWorkerInstalled"];
+    Boolean serviceWorkerActivated = [defaults boolForKey:@"ServiceWorkerActivated"];
+    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:@"ServiceWorkerScriptChecksum"];
+
     NSString *serviceworker = nil;
     if([self.viewController isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)self.viewController;
@@ -37,7 +47,27 @@
         NSLog(@"%@", serviceworker);
         NSString *serviceWorkerScript = [self readServiceWorkerScriptFromFile:serviceworker];
         if (serviceWorkerScript != nil) {
+            if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
+                serviceWorkerInstalled = NO;
+                serviceWorkerActivated = NO;
+                [defaults setBool:NO forKey:@"ServiceWorkerInstalled"];
+                [defaults setBool:NO forKey:@"ServiceWorkerActivated"];
+                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:@"ServiceWorkerScriptChecksum"];
+            }
             [self createServiceWorkerWithScript:serviceWorkerScript];
+            if (!serviceWorkerInstalled) {
+                [self installServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerInstalled = YES;
+                [defaults setBool:YES forKey:@"ServiceWorkerInstalled"];
+            }
+            // TODO: Don't do this immediately. Wait for installation to complete
+            if (!serviceWorkerActivated) {
+                [self activateServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerActivated = YES;
+                [defaults setBool:YES forKey:@"ServiceWorkerActivated"];
+            }
         }
     }
     else NSLog(@"No service worker script defined");
@@ -73,6 +103,14 @@
 
     // Save the JS context.
     [self setContext:context];
+}
+
+- (void)installServiceWorker
+{
+}
+
+- (void)activateServiceWorker
+{
 }
 
 - (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
