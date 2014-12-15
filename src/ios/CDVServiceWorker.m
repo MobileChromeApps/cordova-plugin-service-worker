@@ -23,6 +23,8 @@
 
 @implementation CDVServiceWorker
 
+@synthesize context=_context;
+
 - (void)pluginInitialize
 {
     NSString *serviceworker = nil;
@@ -57,14 +59,28 @@
     return serviceWorkerScript;
 }
 
+- (void)createServiceWorkerWithScript:(NSString *)serviceWorkerScript inContext:(JSContext *)context
+{
+    // Evaluate the ServiceWorker script.
+    [context evaluateScript:serviceWorkerScript];
+}
+
+- (void)createServiceWorkerWithScript:(NSString *)serviceWorkerScript
+{
+    // Create a JS context.
+    JSContext *context = [JSContext new];
+
+    [self createServiceWorkerWithScript:serviceWorkerScript inContext:context];
+
+    // Save the JS context.
+    [self setContext:context];
+}
+
 - (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
 {
     // Extract the arguments.
     NSString* scriptUrl = [command argumentAtIndex:0];
     NSDictionary* options = [command argumentAtIndex:1];
-
-    // Create a JS context.
-    JSContext* context = [JSContext new];
 
     // Read the ServiceWorker script.
     NSString* serviceWorkerScript = [self readServiceWorkerScriptFromFile:scriptUrl];
@@ -74,11 +90,7 @@
         return;
     }
 
-    // Evaluate the ServiceWorker script.
-    [context evaluateScript:serviceWorkerScript];
-
-    // Save the JS context.
-    [self setContext:context];
+    [self createServiceWorkerWithScript:serviceWorkerScript];
 
     // TODO(maxw): Send the appropriate PluginResult.
 }
