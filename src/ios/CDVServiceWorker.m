@@ -50,7 +50,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     }
     if (serviceWorker != nil) {
         NSLog(@"%@", serviceWorker);
-        NSString *serviceWorkerScript = [self readServiceWorkerScriptFromFile:serviceWorker];
+        NSString *serviceWorkerScript = [self readScriptFromFile:serviceWorker];
         if (serviceWorkerScript != nil) {
             if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
                 serviceWorkerInstalled = NO;
@@ -59,7 +59,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
                 [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
                 [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
             }
-            [self createServiceWorkerWithScript:serviceWorkerScript];
+            [self createServiceWorkerFromScript:serviceWorkerScript];
             if (!serviceWorkerInstalled) {
                 [self installServiceWorker];
                 // TODO: Don't do this on exception. Wait for extended events to complete
@@ -79,36 +79,16 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     }
 }
 
-- (NSString *)readServiceWorkerScriptFromFile:(NSString*)filename
+# pragma mark ServiceWorker Functions
+
+- (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
 {
-    // Read the ServiceWorker script.
-    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/%@", filename]];
-    NSError* error;
-    NSString* serviceWorkerScript = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+    // Extract the arguments.
+    NSString *scriptUrl = [command argumentAtIndex:0];
+    NSDictionary *options = [command argumentAtIndex:1];
 
-    if (error) {
-        NSLog(@"Could not read ServiceWorker script: %@", [error description]);
-        return nil;
-    }
-
-    return serviceWorkerScript;
-}
-
-- (void)createServiceWorkerWithScript:(NSString *)serviceWorkerScript inContext:(JSContext *)context
-{
-    // Evaluate the ServiceWorker script.
-    [context evaluateScript:serviceWorkerScript];
-}
-
-- (void)createServiceWorkerWithScript:(NSString *)serviceWorkerScript
-{
-    // Create a JS context.
-    JSContext *context = [JSContext new];
-
-    [self createServiceWorkerWithScript:serviceWorkerScript inContext:context];
-
-    // Save the JS context.
-    [self setContext:context];
+    // Create the ServiceWorker.
+    [self createServiceWorkerFromFile:scriptUrl];
 }
 
 - (void)installServiceWorker
@@ -121,23 +101,50 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     [[self context] evaluateScript:@"this.onactivate && (typeof onactivate === 'function') && onactivate()"];
 }
 
-- (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
+# pragma mark Helper Functions
+
+- (void)createServiceWorkerFromFile:(NSString *)filename
 {
-    // Extract the arguments.
-    NSString* scriptUrl = [command argumentAtIndex:0];
-    NSDictionary* options = [command argumentAtIndex:1];
-
     // Read the ServiceWorker script.
-    NSString* serviceWorkerScript = [self readServiceWorkerScriptFromFile:scriptUrl];
+    NSString *serviceWorkerScript = [self readScriptFromFile:filename];
 
-    if (serviceWorkerScript == nil) {
-        // TODO(maxw): Send the appropriate PluginResult.
-        return;
+    // Create the ServiceWorker using this script.
+    [self createServiceWorkerFromScript:serviceWorkerScript];
+}
+
+- (void)createServiceWorkerFromScript:(NSString *)script
+{
+    // Create a JS context.
+    JSContext *context = [JSContext new];
+
+    // Load the service worker script.
+    [self loadScript:script intoContext:context];
+
+    // Save the JS context.
+    [self setContext:context];
+}
+
+- (NSString *)readScriptFromFile:(NSString*)filename
+{
+    // Read the script from the file.
+    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/%@", filename]];
+    NSError *error;
+    NSString *script = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+
+    // If there was an error, log it and return.
+    if (error) {
+        NSLog(@"Could not read script: %@", [error description]);
+        return nil;
     }
 
-    [self createServiceWorkerWithScript:serviceWorkerScript];
+    // Return our script!
+    return script;
+}
 
-    // TODO(maxw): Send the appropriate PluginResult.
+- (void)loadScript:(NSString *)script intoContext:(JSContext *)context
+{
+    // Evaluate the script.
+    [context evaluateScript:script];
 }
 
 @end
