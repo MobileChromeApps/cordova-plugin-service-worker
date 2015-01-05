@@ -21,6 +21,11 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import "CDVServiceWorker.h"
 
+NSString * const SERVICE_WORKER = @"service_worker";
+NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
+NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
+NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum";
+
 @implementation CDVServiceWorker
 
 @synthesize context=_context;
@@ -33,44 +38,45 @@
 - (void)pluginInitialize
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    Boolean serviceWorkerInstalled = [defaults boolForKey:@"ServiceWorkerInstalled"];
-    Boolean serviceWorkerActivated = [defaults boolForKey:@"ServiceWorkerActivated"];
-    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:@"ServiceWorkerScriptChecksum"];
+    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
+    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
+    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
 
-    NSString *serviceworker = nil;
-    if([self.viewController isKindOfClass:[CDVViewController class]]) {
-        CDVViewController *vc = (CDVViewController *)self.viewController;
-        NSMutableDictionary *settings = vc.settings;
-        serviceworker = [settings objectForKey:@"service_worker"];
+    NSString *serviceWorker = nil;
+    if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
+        CDVViewController *vc = (CDVViewController *)[self viewController];
+        NSMutableDictionary *settings = [vc settings];
+        serviceWorker = [settings objectForKey:SERVICE_WORKER];
     }
-    if (serviceworker != nil) {
-        NSLog(@"%@", serviceworker);
-        NSString *serviceWorkerScript = [self readServiceWorkerScriptFromFile:serviceworker];
+    if (serviceWorker != nil) {
+        NSLog(@"%@", serviceWorker);
+        NSString *serviceWorkerScript = [self readServiceWorkerScriptFromFile:serviceWorker];
         if (serviceWorkerScript != nil) {
             if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
                 serviceWorkerInstalled = NO;
                 serviceWorkerActivated = NO;
-                [defaults setBool:NO forKey:@"ServiceWorkerInstalled"];
-                [defaults setBool:NO forKey:@"ServiceWorkerActivated"];
-                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:@"ServiceWorkerScriptChecksum"];
+                [defaults setBool:NO forKey:SERVICE_WORKER_INSTALLED];
+                [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
+                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
             }
             [self createServiceWorkerWithScript:serviceWorkerScript];
             if (!serviceWorkerInstalled) {
                 [self installServiceWorker];
                 // TODO: Don't do this on exception. Wait for extended events to complete
                 serviceWorkerInstalled = YES;
-                [defaults setBool:YES forKey:@"ServiceWorkerInstalled"];
+                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
             }
             // TODO: Don't do this immediately. Wait for installation to complete
             if (!serviceWorkerActivated) {
                 [self activateServiceWorker];
                 // TODO: Don't do this on exception. Wait for extended events to complete
                 serviceWorkerActivated = YES;
-                [defaults setBool:YES forKey:@"ServiceWorkerActivated"];
+                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
             }
         }
+    } else {
+        NSLog(@"No service worker script defined");
     }
-    else NSLog(@"No service worker script defined");
 }
 
 - (NSString *)readServiceWorkerScriptFromFile:(NSString*)filename
@@ -107,12 +113,12 @@
 
 - (void)installServiceWorker
 {
-    [self.context evaluateScript:@"this.oninstall && (typeof oninstall === 'function') && oninstall()"];
+    [[self context] evaluateScript:@"this.oninstall && (typeof oninstall === 'function') && oninstall()"];
 }
 
 - (void)activateServiceWorker
 {
-    [self.context evaluateScript:@"this.onactivate && (typeof onactivate === 'function') && onactivate()"];
+    [[self context] evaluateScript:@"this.onactivate && (typeof onactivate === 'function') && onactivate()"];
 }
 
 - (void)registerServiceWorker:(CDVInvokedUrlCommand*)command

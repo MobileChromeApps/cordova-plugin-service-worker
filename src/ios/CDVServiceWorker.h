@@ -19,6 +19,11 @@
 
 #import <Cordova/CDVPlugin.h>
 
+extern NSString * const SERVICE_WORKER;
+extern NSString * const SERVICE_WORKER_ACTIVATED;
+extern NSString * const SERVICE_WORKER_INSTALLED;
+extern NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM;
+
 @interface CDVServiceWorker : CDVPlugin {}
 
 @property (nonatomic, retain) JSContext* context;
