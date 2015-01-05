@@ -27,7 +27,7 @@
 
 - (NSString *)hashForString:(NSString *)string
 {
-    return @"7";
+    return @"9";
 }
 
 - (void)pluginInitialize
@@ -107,10 +107,12 @@
 
 - (void)installServiceWorker
 {
+    [self.context evaluateScript:@"this.oninstall && (typeof oninstall === 'function') && oninstall()"];
 }
 
 - (void)activateServiceWorker
 {
+    [self.context evaluateScript:@"this.onactivate && (typeof onactivate === 'function') && onactivate()"];
 }
 
 - (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
