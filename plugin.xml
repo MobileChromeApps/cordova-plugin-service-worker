@@ -7,6 +7,8 @@
     <license>Apache 2.0</license>
     <keywords>cordova,serviceworker</keywords>
 
+    <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
+
     <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
         <clobbers target="navigator.serviceWorker" />
     </js-module>
