@@ -42,15 +42,15 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
     NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
 
-    NSString *serviceWorker = nil;
+    NSString *serviceWorkerScriptRelativePath = nil;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
-        serviceWorker = [settings objectForKey:SERVICE_WORKER];
+        serviceWorkerScriptRelativePath = [settings objectForKey:SERVICE_WORKER];
     }
-    if (serviceWorker != nil) {
-        NSLog(@"%@", serviceWorker);
-        NSString *serviceWorkerScript = [self readScriptFromFile:serviceWorker];
+    if (serviceWorkerScriptRelativePath != nil) {
+        NSLog(@"%@", serviceWorkerScriptRelativePath);
+        NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
         if (serviceWorkerScript != nil) {
             if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
                 serviceWorkerInstalled = NO;
@@ -106,7 +106,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 - (void)createServiceWorkerFromFile:(NSString *)filename
 {
     // Read the ServiceWorker script.
-    NSString *serviceWorkerScript = [self readScriptFromFile:filename];
+    NSString *serviceWorkerScript = [self readScriptAtRelativePath:filename];
 
     // Create the ServiceWorker using this script.
     [self createServiceWorkerFromScript:serviceWorkerScript];
@@ -117,6 +117,16 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     // Create a JS context.
     JSContext *context = [JSContext new];
 
+    // Pipe JS logging in this context to NSLog.
+    // NOTE: Not the nicest of hacks, but useful!
+    [context evaluateScript:@"var console = {}"];
+    context[@"console"][@"log"] = ^(NSString *message) {
+        NSLog(@"JS log: %@", message);
+    };
+
+    // Load the required polyfills.
+    [self loadPolyfillsIntoContext:context];
+
     // Load the service worker script.
     [self loadScript:script intoContext:context];
 
@@ -124,12 +134,16 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     [self setContext:context];
 }
 
-- (NSString *)readScriptFromFile:(NSString*)filename
+- (NSString *)readScriptAtRelativePath:(NSString*)relativePath
 {
+    // NOTE: Relative path means relative to <app bundle>/www/js/.
+
+    // Compose the absolute path.
+    NSString *absolutePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/js/%@", relativePath]];
+
     // Read the script from the file.
-    NSString *scriptPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/%@", filename]];
     NSError *error;
-    NSString *script = [NSString stringWithContentsOfFile:scriptPath encoding:NSUTF8StringEncoding error:&error];
+    NSString *script = [NSString stringWithContentsOfFile:absolutePath encoding:NSUTF8StringEncoding error:&error];
 
     // If there was an error, log it and return.
     if (error) {
@@ -141,10 +155,38 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     return script;
 }
 
+- (void)loadPolyfillsIntoContext:(JSContext *)context
+{
+    // Specify the polyfill directory.
+    NSString *polyfillDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www/js/polyfills"];
+
+    // Get the list of polyfills.
+    NSArray *polyfillFilenames = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:polyfillDirectoryPath error:NULL];
+
+    // Read and load each polyfill.
+    for (NSString *polyfillFilename in polyfillFilenames) {
+        NSString *relativePath = [NSString stringWithFormat:@"polyfills/%@", polyfillFilename];
+        [self readAndLoadScriptAtRelativePath:relativePath intoContext:context];
+    }
+}
+
 - (void)loadScript:(NSString *)script intoContext:(JSContext *)context
 {
     // Evaluate the script.
     [context evaluateScript:script];
+}
+
+- (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath intoContext:(JSContext *)context
+{
+    // Read the script.
+    NSString *script = [self readScriptAtRelativePath:relativePath];
+
+    if (script == nil) {
+        return;
+    }
+
+    // Load the script into the context.
+    [self loadScript:script intoContext:context];
 }
 
 @end
