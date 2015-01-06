@@ -42,14 +42,15 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
     NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
 
-    NSString *serviceWorkerScriptRelativePath = nil;
+    NSString *serviceWorkerScriptFilename = nil;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
-        serviceWorkerScriptRelativePath = [settings objectForKey:SERVICE_WORKER];
+        serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
     }
-    if (serviceWorkerScriptRelativePath != nil) {
-        NSLog(@"%@", serviceWorkerScriptRelativePath);
+    if (serviceWorkerScriptFilename != nil) {
+        NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", serviceWorkerScriptFilename];
+        NSLog(@"ServiceWorker relative path: %@", serviceWorkerScriptRelativePath);
         NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
         if (serviceWorkerScript != nil) {
             if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
@@ -106,7 +107,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 - (void)createServiceWorkerFromFile:(NSString *)filename
 {
     // Read the ServiceWorker script.
-    NSString *serviceWorkerScript = [self readScriptAtRelativePath:filename];
+    NSString *serviceWorkerScript = [self readScriptAtRelativePath:[NSString stringWithFormat:@"www/%@", filename]];
 
     // Create the ServiceWorker using this script.
     [self createServiceWorkerFromScript:serviceWorkerScript];
@@ -136,10 +137,10 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 
 - (NSString *)readScriptAtRelativePath:(NSString*)relativePath
 {
-    // NOTE: Relative path means relative to <app bundle>/www/js/.
+    // NOTE: Relative path means relative to the app bundle.
 
     // Compose the absolute path.
-    NSString *absolutePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/www/js/%@", relativePath]];
+    NSString *absolutePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:[NSString stringWithFormat:@"/%@", relativePath]];
 
     // Read the script from the file.
     NSError *error;
@@ -158,14 +159,15 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 - (void)loadPolyfillsIntoContext:(JSContext *)context
 {
     // Specify the polyfill directory.
-    NSString *polyfillDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www/js/polyfills"];
+    // TODO: Move polyfills up one directory, so they're not in www.
+    NSString *polyfillDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www/polyfills"];
 
     // Get the list of polyfills.
     NSArray *polyfillFilenames = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:polyfillDirectoryPath error:NULL];
 
     // Read and load each polyfill.
     for (NSString *polyfillFilename in polyfillFilenames) {
-        NSString *relativePath = [NSString stringWithFormat:@"polyfills/%@", polyfillFilename];
+        NSString *relativePath = [NSString stringWithFormat:@"www/polyfills/%@", polyfillFilename];
         [self readAndLoadScriptAtRelativePath:relativePath intoContext:context];
     }
 }

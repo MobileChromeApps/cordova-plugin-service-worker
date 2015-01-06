@@ -19,6 +19,9 @@
         <clobbers target="ServiceWorker" />
     </js-module>
 
+    <!-- Add polyfills here! -->
+    <asset src="www/polyfills/sample.js" target="polyfills/sample.js" />
+
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
             <feature name="ServiceWorker">
