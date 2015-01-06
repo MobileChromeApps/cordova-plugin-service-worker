@@ -32,7 +32,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 
 - (NSString *)hashForString:(NSString *)string
 {
-    return @"9";
+    return @"14";
 }
 
 - (void)pluginInitialize
@@ -94,12 +94,12 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 
 - (void)installServiceWorker
 {
-    [[self context] evaluateScript:@"this.oninstall && (typeof oninstall === 'function') && oninstall()"];
+    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'))"];
 }
 
 - (void)activateServiceWorker
 {
-    [[self context] evaluateScript:@"this.onactivate && (typeof onactivate === 'function') && onactivate()"];
+    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'))"];
 }
 
 # pragma mark Helper Functions
