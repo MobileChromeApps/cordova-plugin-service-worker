@@ -9,6 +9,7 @@
 
     <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
 
+    <!-- JS modules for use by the plugin (browser env) -->
     <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
         <clobbers target="navigator.serviceWorker" />
     </js-module>
@@ -19,8 +20,8 @@
         <clobbers target="ServiceWorker" />
     </js-module>
 
-    <!-- Add polyfills here! -->
-    <asset src="www/polyfills/sample.js" target="polyfills/sample.js" />
+    <!-- Assets for use by the worker (worker env) -->
+    <asset src="www/polyfills/event.js" target="polyfills/event.js" />
 
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
