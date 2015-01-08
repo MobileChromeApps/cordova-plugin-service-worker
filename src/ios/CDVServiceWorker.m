@@ -21,11 +21,6 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import "CDVServiceWorker.h"
 
-NSString * const SERVICE_WORKER = @"service_worker";
-NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
-NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
-NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum";
-
 @interface FetchInterceptorProtocol : NSURLProtocol {}
 + (BOOL)canInitWithRequest:(NSURLRequest *)request;
 - (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
@@ -54,11 +49,11 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 + (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
     return request;
 }
- 
+
 + (BOOL)requestIsCacheEquivalent:(NSURLRequest *)a toRequest:(NSURLRequest *)b {
     return [super requestIsCacheEquivalent:a toRequest:b];
 }
- 
+
 - (void)startLoading {
     // Attach a reference to the Service Worker to a copy of the request
     NSMutableURLRequest *workerRequest = [self.request mutableCopy];
@@ -67,7 +62,7 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 
     [instanceForRequest fetchResponseForRequest:workerRequest delegateTo:self];
 }
- 
+
 - (void)stopLoading {
     [self.connection cancel];
     self.connection = nil;
@@ -92,28 +87,44 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
     [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
 }
- 
+
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
     [self.client URLProtocol:self didLoadData:data];
 }
- 
+
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
     [self.client URLProtocolDidFinishLoading:self];
 }
- 
+
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
     [self.client URLProtocol:self didFailWithError:error];
 }
 @end
 
+NSString * const SERVICE_WORKER = @"service_worker";
+NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
+NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
+NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum";
+
+NSString * const REGISTER_OPTIONS_KEY_SCOPE = @"scope";
+
+NSString * const REGISTRATION_KEY_ACTIVE = @"active";
+NSString * const REGISTRATION_KEY_INSTALLING = @"installing";
+NSString * const REGISTRATION_KEY_REGISTERING_SCRIPT_URL = @"registeringScriptURL";
+NSString * const REGISTRATION_KEY_SCOPE = @"scope";
+NSString * const REGISTRATION_KEY_WAITING = @"waiting";
+
+NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
+
 @implementation CDVServiceWorker
 
-@synthesize context=_context;
-@synthesize requestDelegates=_requestDelegates;
+@synthesize context = _context;
+@synthesize registration = _registration;
+@synthesize requestDelegates = _requestDelegates;
 
 - (NSString *)hashForString:(NSString *)string
 {
-    return @"15";
+    return @"17";
 }
 
 CDVServiceWorker *singletonInstance = nil; // TODO: Something better
@@ -126,11 +137,11 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 {
     // TODO: Make this better; probably a registry
     singletonInstance = self;
-    
+
     _requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
-    
+
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
     Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
@@ -176,14 +187,52 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 # pragma mark ServiceWorker Functions
 
-- (void)registerServiceWorker:(CDVInvokedUrlCommand*)command
+- (void)register:(CDVInvokedUrlCommand*)command
 {
-    // Extract the arguments.
     NSString *scriptUrl = [command argumentAtIndex:0];
     NSDictionary *options = [command argumentAtIndex:1];
 
-    // Create the ServiceWorker.
-    [self createServiceWorkerFromFile:scriptUrl];
+    // The script url must be at the root.
+    // TODO: Look into supporting non-root ServiceWorker scripts.
+    if ([scriptUrl containsString:@"/"]) {
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:@"The script URL must be at the root."];
+        [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
+    }
+
+    // The provided scope is ignored; we always set it to the root.
+    // TODO: Support provided scopes.
+    NSString *scopeUrl = @"/";
+
+    // If we have a registration on record, make sure it matches the attempted registration.
+    // If it matches, return it.  If it doesn't, we have a problem!
+    // If we don't have a registration on record, create one, store it, and return it.
+    if (self.registration != nil) {
+        if (![[self.registration valueForKey:REGISTRATION_KEY_REGISTERING_SCRIPT_URL] isEqualToString:scriptUrl]) {
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                              messageAsString:@"The script URL doesn't match the existing registration."];
+            [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
+        } else if (![[self.registration valueForKey:REGISTRATION_KEY_SCOPE] isEqualToString:scopeUrl]) {
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                              messageAsString:@"The scope URL doesn't match the existing registration."];
+            [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
+        }
+    } else {
+        NSDictionary *serviceWorker = [NSDictionary dictionaryWithObject:scriptUrl forKey:SERVICE_WORKER_KEY_SCRIPT_URL];
+        // TODO: Add a state to the ServiceWorker object.
+
+        NSArray *registrationKeys = @[REGISTRATION_KEY_INSTALLING,
+                                      REGISTRATION_KEY_WAITING,
+                                      REGISTRATION_KEY_ACTIVE,
+                                      REGISTRATION_KEY_REGISTERING_SCRIPT_URL,
+                                      REGISTRATION_KEY_SCOPE];
+        NSArray *registrationObjects = @[[NSNull null], [NSNull null], serviceWorker, scriptUrl, scopeUrl];
+        self.registration = [NSDictionary dictionaryWithObjects:registrationObjects forKeys:registrationKeys];
+    }
+
+    // Return the registration.
+    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self.registration];
+    [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
 }
 
 - (void)installServiceWorker
@@ -198,27 +247,11 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 # pragma mark Helper Functions
 
-- (void)createServiceWorkerFromFile:(NSString *)filename
-{
-    // Read the ServiceWorker script.
-    NSString *serviceWorkerScript = [self readScriptAtRelativePath:[NSString stringWithFormat:@"www/%@", filename]];
-
-    // Create the ServiceWorker using this script.
-    [self createServiceWorkerFromScript:serviceWorkerScript];
-}
-
 - (void)createServiceWorkerFromScript:(NSString *)script
 {
     // Create a JS context.
     JSContext *context = [JSContext new];
 
-    // Pipe JS logging in this context to NSLog.
-    // NOTE: Not the nicest of hacks, but useful!
-    [context evaluateScript:@"var console = {}"];
-    context[@"console"][@"log"] = ^(NSString *message) {
-        NSLog(@"JS log: %@", message);
-    };
-    
     [context setExceptionHandler:^(JSContext *context, JSValue *value) {
         NSLog(@"%@", value);
     }];
@@ -231,21 +264,21 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSString *mimeType = [headerList[@"mime_type"] toString];
         NSString *encoding = @"utf-8";
         NSString *url = [response[@"url"] toString]; // TODO: Can this ever be different than the request url? if not, don't allow it to be overridden
- 
+
         NSURLResponse *urlResponse = [[NSURLResponse alloc] initWithURL:[NSURL URLWithString:url]
                                                             MIMEType:mimeType
                                                expectedContentLength:data.length
                                                     textEncodingName:encoding];
- 
+
         [interceptor handleAResponse:urlResponse withSomeData:data];
     };
-    
+
     context[@"handleFetchDefault"] = ^(JSValue *response) {
         NSNumber *requestId=@6;
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
         [interceptor passThrough];
     };
-    
+
     // Load the required polyfills.
     [self loadPolyfillsIntoContext:context];
 
@@ -318,9 +351,9 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 {
     // Register the request and delegate
     [self.requestDelegates setObject:protocol forKey:@6];
-    
+
     // Build JS Request object from self.request
-    
+
     // Fire a fetch event in the JSContext
     [self.context evaluateScript:[NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@', id:6}}));", [[request URL] absoluteString]]];
 }

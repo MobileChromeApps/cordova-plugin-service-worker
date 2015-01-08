@@ -24,13 +24,24 @@ extern NSString * const SERVICE_WORKER_ACTIVATED;
 extern NSString * const SERVICE_WORKER_INSTALLED;
 extern NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM;
 
+extern NSString * const REGISTER_OPTIONS_KEY_SCOPE;
+
+extern NSString * const REGISTRATION_KEY_ACTIVE;
+extern NSString * const REGISTRATION_KEY_INSTALLING;
+extern NSString * const REGISTRATION_KEY_REGISTERING_SCRIPT_URL;
+extern NSString * const REGISTRATION_KEY_SCOPE;
+extern NSString * const REGISTRATION_KEY_WAITING;
+
+extern NSString * const SERVICE_WORKER_KEY_SCRIPT_URL;
+
 @interface CDVServiceWorker : CDVPlugin {}
 
 + (CDVServiceWorker *)instanceForRequest:(NSURLRequest *)request;
 - (void)fetchResponseForRequest:(NSURLRequest *)request delegateTo:(NSURLProtocol *)protocol;
 
-@property (nonatomic, retain) JSContext* context;
+@property (nonatomic, retain) JSContext *context;
 @property (nonatomic, retain) NSMutableDictionary *requestDelegates;
+@property (nonatomic, retain) NSDictionary *registration;
 
 @end
 
