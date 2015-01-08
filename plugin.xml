@@ -10,13 +10,13 @@
     <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
 
     <!-- JS modules for use by the plugin (browser env) -->
-    <js-module src="www/serviceworkercontainer.js" name="ServiceWorkerContainer">
+    <js-module src="www/service_worker_container.js" name="ServiceWorkerContainer">
         <clobbers target="navigator.serviceWorker" />
     </js-module>
-    <js-module src="www/serviceworkerregistration.js" name="ServiceWorkerRegistration">
+    <js-module src="www/service_worker_registration.js" name="ServiceWorkerRegistration">
         <clobbers target="ServiceWorkerRegistration" />
     </js-module>
-    <js-module src="www/serviceworker.js" name="ServiceWorker">
+    <js-module src="www/service_worker.js" name="ServiceWorker">
         <clobbers target="ServiceWorker" />
     </js-module>
 
