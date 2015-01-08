@@ -22,6 +22,7 @@
 
     <!-- Assets for use by the worker (worker env) -->
     <asset src="www/polyfills/event.js" target="polyfills/event.js" />
+    <asset src="www/polyfills/fetch.js" target="polyfills/fetch.js" />
 
     <platform name="ios">
         <config-file target="config.xml" parent="/*">

@@ -26,17 +26,111 @@ NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
 NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
 NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum";
 
+@interface FetchInterceptorProtocol : NSURLProtocol {}
++ (BOOL)canInitWithRequest:(NSURLRequest *)request;
+- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
+@property (nonatomic, retain) NSURLConnection *connection;
+@end
+
+@implementation FetchInterceptorProtocol
+@synthesize connection=_connection;
+
++ (BOOL)canInitWithRequest:(NSURLRequest *)request {
+    // Check - is there a service worker for this request?
+    // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
+    if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
+        // Already seen; not handling
+        return NO;
+    } else {
+        if ([CDVServiceWorker instanceForRequest:request]) {
+            // Handling
+            return YES;
+        } else {
+            // No Service Worker installed; not handling
+            return NO;
+        }
+    }
+}
++ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
+    return request;
+}
+ 
++ (BOOL)requestIsCacheEquivalent:(NSURLRequest *)a toRequest:(NSURLRequest *)b {
+    return [super requestIsCacheEquivalent:a toRequest:b];
+}
+ 
+- (void)startLoading {
+    // Attach a reference to the Service Worker to a copy of the request
+    NSMutableURLRequest *workerRequest = [self.request mutableCopy];
+    CDVServiceWorker *instanceForRequest = [CDVServiceWorker instanceForRequest:workerRequest];
+    [NSURLProtocol setProperty:instanceForRequest forKey:@"ServiceWorkerPlugin" inRequest:workerRequest];
+
+    [instanceForRequest fetchResponseForRequest:workerRequest delegateTo:self];
+}
+ 
+- (void)stopLoading {
+    [self.connection cancel];
+    self.connection = nil;
+}
+
+- (void)passThrough {
+    // Flag this request as a pass-through so that the URLProtocol doesn't try to grab it again
+    NSMutableURLRequest *taggedRequest = [self.request mutableCopy];
+    [NSURLProtocol setProperty:@YES forKey:@"PassThrough" inRequest:taggedRequest];
+
+    // Initiate a new request to actually retrieve the resource
+    self.connection = [NSURLConnection connectionWithRequest:taggedRequest delegate:self];
+}
+
+- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data {
+    // TODO: Move cache storage policy into args
+    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
+    [self.client URLProtocol:self didLoadData:data];
+    [self.client URLProtocolDidFinishLoading:self];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
+}
+ 
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    [self.client URLProtocol:self didLoadData:data];
+}
+ 
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    [self.client URLProtocolDidFinishLoading:self];
+}
+ 
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    [self.client URLProtocol:self didFailWithError:error];
+}
+@end
+
 @implementation CDVServiceWorker
 
 @synthesize context=_context;
+@synthesize requestDelegates=_requestDelegates;
 
 - (NSString *)hashForString:(NSString *)string
 {
-    return @"14";
+    return @"15";
+}
+
+CDVServiceWorker *singletonInstance = nil; // TODO: Something better
++ (CDVServiceWorker *)instanceForRequest:(NSURLRequest *)request
+{
+    return singletonInstance;
 }
 
 - (void)pluginInitialize
 {
+    // TODO: Make this better; probably a registry
+    singletonInstance = self;
+    
+    _requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
+
+    [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
+    
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
     Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
@@ -124,7 +218,34 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     context[@"console"][@"log"] = ^(NSString *message) {
         NSLog(@"JS log: %@", message);
     };
+    
+    [context setExceptionHandler:^(JSContext *context, JSValue *value) {
+        NSLog(@"%@", value);
+    }];
 
+    context[@"handleFetchResponse"] = ^(JSValue *response) {
+        NSNumber *requestId=@6;
+        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
+        NSData *data = [[response[@"body"] toString] dataUsingEncoding:NSUTF8StringEncoding];
+        JSValue *headerList = response[@"header_list"];
+        NSString *mimeType = [headerList[@"mime_type"] toString];
+        NSString *encoding = @"utf-8";
+        NSString *url = [response[@"url"] toString]; // TODO: Can this ever be different than the request url? if not, don't allow it to be overridden
+ 
+        NSURLResponse *urlResponse = [[NSURLResponse alloc] initWithURL:[NSURL URLWithString:url]
+                                                            MIMEType:mimeType
+                                               expectedContentLength:data.length
+                                                    textEncodingName:encoding];
+ 
+        [interceptor handleAResponse:urlResponse withSomeData:data];
+    };
+    
+    context[@"handleFetchDefault"] = ^(JSValue *response) {
+        NSNumber *requestId=@6;
+        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
+        [interceptor passThrough];
+    };
+    
     // Load the required polyfills.
     [self loadPolyfillsIntoContext:context];
 
@@ -190,6 +311,21 @@ NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum"
     // Load the script into the context.
     [self loadScript:script intoContext:context];
 }
+
+
+// Test whether a resource should be fetched
+- (void)fetchResponseForRequest:(NSURLRequest *)request delegateTo:(NSURLProtocol *)protocol
+{
+    // Register the request and delegate
+    [self.requestDelegates setObject:protocol forKey:@6];
+    
+    // Build JS Request object from self.request
+    
+    // Fire a fetch event in the JSContext
+    [self.context evaluateScript:[NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@', id:6}}));", [[request URL] absoluteString]]];
+}
+
+
 
 @end
 

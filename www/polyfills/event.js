@@ -76,3 +76,10 @@ Object.defineProperty(this, 'onactivate', {
   get: eventGetter('activate'),
   set: eventSetter('activate')
 });
+
+Object.defineProperty(this, 'onfetch', {
+  configurable: false,
+  enumerable: true,
+  get: eventGetter('fetch'),
+  set: eventSetter('fetch')
+});

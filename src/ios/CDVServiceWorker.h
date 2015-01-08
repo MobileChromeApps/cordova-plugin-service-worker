@@ -26,7 +26,11 @@ extern NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM;
 
 @interface CDVServiceWorker : CDVPlugin {}
 
++ (CDVServiceWorker *)instanceForRequest:(NSURLRequest *)request;
+- (void)fetchResponseForRequest:(NSURLRequest *)request delegateTo:(NSURLProtocol *)protocol;
+
 @property (nonatomic, retain) JSContext* context;
+@property (nonatomic, retain) NSMutableDictionary *requestDelegates;
 
 @end
 
