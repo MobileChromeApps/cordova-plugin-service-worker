@@ -1,6 +1,9 @@
 FetchEvent = function(eventInitDict) {
   Event.call(this, 'fetch');
   if (eventInitDict) {
+    if (eventInitDict.id) {
+      Object.defineProperty(this, '__requestId', {value: eventInitDict.id});
+    }
     if (eventInitDict.request) {
       Object.defineProperty(this, 'request', {value: eventInitDict.request});
     }
@@ -15,7 +18,7 @@ FetchEvent = function(eventInitDict) {
 FetchEvent.prototype = new Event();
 
 FetchEvent.prototype.sendResponse = function(url, body) {
-    handleFetchResponse({
+    handleFetchResponse(this.__requestId, {
         url:url,
         status:200,
         status_message:'OK',
@@ -25,7 +28,7 @@ FetchEvent.prototype.sendResponse = function(url, body) {
         type:'default',
         body:body
     });
-}
+};
 
 FetchEvent.prototype.respondWith = function(response) {};
 
@@ -33,5 +36,5 @@ FetchEvent.prototype.forwardTo = function(url) {};
 
 FetchEvent.prototype.default = function(ev) {
   console.log("In fetch.default");
-  handleFetchDefault({url:ev.request.url});
+  handleFetchDefault(ev.__requestId, {url:ev.request.url});
 };

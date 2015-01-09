@@ -21,6 +21,8 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import "CDVServiceWorker.h"
 
+#include <libkern/OSAtomic.h>
+
 @interface FetchInterceptorProtocol : NSURLProtocol {}
 + (BOOL)canInitWithRequest:(NSURLRequest *)request;
 - (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
@@ -29,6 +31,8 @@
 
 @implementation FetchInterceptorProtocol
 @synthesize connection=_connection;
+
+static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
     // Check - is there a service worker for this request?
@@ -46,6 +50,7 @@
         }
     }
 }
+
 + (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
     return request;
 }
@@ -59,8 +64,10 @@
     NSMutableURLRequest *workerRequest = [self.request mutableCopy];
     CDVServiceWorker *instanceForRequest = [CDVServiceWorker instanceForRequest:workerRequest];
     [NSURLProtocol setProperty:instanceForRequest forKey:@"ServiceWorkerPlugin" inRequest:workerRequest];
+    NSNumber *requestId = [NSNumber numberWithLongLong:OSAtomicIncrement64(&requestCount)];
+    [NSURLProtocol setProperty:requestId forKey:@"RequestId" inRequest:workerRequest];
 
-    [instanceForRequest fetchResponseForRequest:workerRequest delegateTo:self];
+    [instanceForRequest fetchResponseForRequest:workerRequest withId:requestId delegateTo:self];
 }
 
 - (void)stopLoading {
@@ -256,9 +263,13 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSLog(@"%@", value);
     }];
 
-    context[@"handleFetchResponse"] = ^(JSValue *response) {
-        NSNumber *requestId=@6;
+    context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
+        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+        [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+        NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
+        [self.requestDelegates removeObjectForKey:requestId];
+
         NSData *data = [[response[@"body"] toString] dataUsingEncoding:NSUTF8StringEncoding];
         JSValue *headerList = response[@"header_list"];
         NSString *mimeType = [headerList[@"mime_type"] toString];
@@ -273,9 +284,12 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [interceptor handleAResponse:urlResponse withSomeData:data];
     };
 
-    context[@"handleFetchDefault"] = ^(JSValue *response) {
-        NSNumber *requestId=@6;
+    context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
+        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+        [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+        NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
+        [self.requestDelegates removeObjectForKey:requestId];
         [interceptor passThrough];
     };
 
@@ -347,15 +361,14 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 
 // Test whether a resource should be fetched
-- (void)fetchResponseForRequest:(NSURLRequest *)request delegateTo:(NSURLProtocol *)protocol
+- (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
 {
     // Register the request and delegate
-    [self.requestDelegates setObject:protocol forKey:@6];
-
-    // Build JS Request object from self.request
+    [self.requestDelegates setObject:protocol forKey:requestId];
 
     // Fire a fetch event in the JSContext
-    [self.context evaluateScript:[NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@', id:6}}));", [[request URL] absoluteString]]];
+    NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[request URL] absoluteString], [requestId longLongValue]];
+    [self.context evaluateScript:dispatchCode];
 }
 
 

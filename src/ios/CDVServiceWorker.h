@@ -37,7 +37,7 @@ extern NSString * const SERVICE_WORKER_KEY_SCRIPT_URL;
 @interface CDVServiceWorker : CDVPlugin {}
 
 + (CDVServiceWorker *)instanceForRequest:(NSURLRequest *)request;
-- (void)fetchResponseForRequest:(NSURLRequest *)request delegateTo:(NSURLProtocol *)protocol;
+- (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol;
 
 @property (nonatomic, retain) JSContext *context;
 @property (nonatomic, retain) NSMutableDictionary *requestDelegates;
