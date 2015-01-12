@@ -242,14 +242,24 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
 }
 
+- (void)postMessage:(CDVInvokedUrlCommand*)command
+{
+    NSString *message = [command argumentAtIndex:0];
+    NSDictionary *targetOrigin = [command argumentAtIndex:1];
+
+    // Fire a message event in the JSContext.
+    NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new MessageEvent({data:Kamino.parse('%@')}));", message];
+    [self.context evaluateScript:dispatchCode];
+}
+
 - (void)installServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'))"];
+    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
 }
 
 - (void)activateServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'))"];
+    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
 }
 
 # pragma mark Helper Functions
@@ -370,8 +380,6 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[request URL] absoluteString], [requestId longLongValue]];
     [self.context evaluateScript:dispatchCode];
 }
-
-
 
 @end
 

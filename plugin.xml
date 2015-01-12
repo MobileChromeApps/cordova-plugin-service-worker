@@ -19,10 +19,15 @@
     <js-module src="www/service_worker.js" name="ServiceWorker">
         <clobbers target="ServiceWorker" />
     </js-module>
+    <js-module src="www/kamino.js" name="kamino.js">
+        <clobbers target="Kamino" />
+    </js-module>
 
     <!-- Assets for use by the worker (worker env) -->
     <asset src="www/polyfills/event.js" target="polyfills/event.js" />
     <asset src="www/polyfills/fetch.js" target="polyfills/fetch.js" />
+    <asset src="www/polyfills/kamino.js" target="polyfills/kamino.js" />
+    <asset src="www/polyfills/message.js" target="polyfills/message.js" />
 
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
