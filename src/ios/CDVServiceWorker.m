@@ -311,8 +311,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
 
-    // Load the required polyfills.
-    [self loadPolyfillsIntoContext:context];
+    // Load the required assets.
+    [self loadServiceWorkerAssetsIntoContext:context];
 
     // Load the ServiceWorker script.
     [self loadScript:script intoContext:context];
@@ -349,18 +349,18 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     return script;
 }
 
-- (void)loadPolyfillsIntoContext:(JSContext *)context
+- (void)loadServiceWorkerAssetsIntoContext:(JSContext *)context
 {
-    // Specify the polyfill directory.
-    // TODO: Move polyfills up one directory, so they're not in www.
-    NSString *polyfillDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www/polyfills"];
+    // Specify the assets directory.
+    // TODO: Move assets up one directory, so they're not in www.
+    NSString *assetDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www/sw_assets"];
 
-    // Get the list of polyfills.
-    NSArray *polyfillFilenames = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:polyfillDirectoryPath error:NULL];
+    // Get the list of assets.
+    NSArray *assetFilenames = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:assetDirectoryPath error:NULL];
 
-    // Read and load each polyfill.
-    for (NSString *polyfillFilename in polyfillFilenames) {
-        NSString *relativePath = [NSString stringWithFormat:@"www/polyfills/%@", polyfillFilename];
+    // Read and load each asset.
+    for (NSString *assetFilename in assetFilenames) {
+        NSString *relativePath = [NSString stringWithFormat:@"www/sw_assets/%@", assetFilename];
         [self readAndLoadScriptAtRelativePath:relativePath intoContext:context];
     }
 }

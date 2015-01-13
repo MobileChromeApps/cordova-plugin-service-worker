@@ -24,11 +24,11 @@
     </js-module>
 
     <!-- Assets for use by the worker (worker env) -->
-    <asset src="www/polyfills/client.js" target="polyfills/client.js" />
-    <asset src="www/polyfills/event.js" target="polyfills/event.js" />
-    <asset src="www/polyfills/fetch.js" target="polyfills/fetch.js" />
-    <asset src="www/polyfills/kamino.js" target="polyfills/kamino.js" />
-    <asset src="www/polyfills/message.js" target="polyfills/message.js" />
+    <asset src="www/sw_assets/client.js" target="sw_assets/client.js" />
+    <asset src="www/sw_assets/event.js" target="sw_assets/event.js" />
+    <asset src="www/sw_assets/fetch.js" target="sw_assets/fetch.js" />
+    <asset src="www/sw_assets/kamino.js" target="sw_assets/kamino.js" />
+    <asset src="www/sw_assets/message.js" target="sw_assets/message.js" />
 
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
