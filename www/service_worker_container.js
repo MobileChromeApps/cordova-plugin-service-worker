@@ -6,7 +6,7 @@ var ServiceWorkerContainer = {
         
         return new Promise(function(resolve, reject) {
             var innerResolve = function(result) {
-                resolve(new ServiceWorkerRegistration(result.installing, result.waiting, result.active, result.registeringScriptUrl, result.scope));
+                resolve(new ServiceWorkerRegistration(result.installing, result.waiting, new ServiceWorker(), result.registeringScriptUrl, result.scope));
             }
         
             exec(innerResolve, reject, "ServiceWorker", "register", [scriptURL, options]);

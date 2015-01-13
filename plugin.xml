@@ -24,6 +24,7 @@
     </js-module>
 
     <!-- Assets for use by the worker (worker env) -->
+    <asset src="www/polyfills/client.js" target="polyfills/client.js" />
     <asset src="www/polyfills/event.js" target="polyfills/event.js" />
     <asset src="www/polyfills/fetch.js" target="polyfills/fetch.js" />
     <asset src="www/polyfills/kamino.js" target="polyfills/kamino.js" />

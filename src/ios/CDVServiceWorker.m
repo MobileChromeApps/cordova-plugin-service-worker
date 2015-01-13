@@ -173,6 +173,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
                 [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
             }
             [self createServiceWorkerFromScript:serviceWorkerScript];
+            [self createServiceWorkerClientWithUrl:serviceWorkerScriptFilename];
             if (!serviceWorkerInstalled) {
                 [self installServiceWorker];
                 // TODO: Don't do this on exception. Wait for extended events to complete
@@ -303,17 +304,31 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [interceptor passThrough];
     };
 
+    // This function is called by `postMessage`, defined in message.js.
+    // `postMessage` serializes the message using kamino.js and passes it here.
+    context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
+        NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
+        [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
+    };
+
     // Load the required polyfills.
     [self loadPolyfillsIntoContext:context];
 
-    // Load the service worker script.
+    // Load the ServiceWorker script.
     [self loadScript:script intoContext:context];
 
     // Save the JS context.
     [self setContext:context];
 }
 
-- (NSString *)readScriptAtRelativePath:(NSString*)relativePath
+- (void)createServiceWorkerClientWithUrl:(NSString *)url
+{
+    // Create a ServiceWorker client.
+    NSString *createClientCode = [NSString stringWithFormat:@"var client = new Client('%@');", url];
+    [self.context evaluateScript:createClientCode];
+}
+
+- (NSString *)readScriptAtRelativePath:(NSString *)relativePath
 {
     // NOTE: Relative path means relative to the app bundle.
 
