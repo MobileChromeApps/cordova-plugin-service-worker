@@ -12,8 +12,9 @@ var self = this;
 // the event is.
 // callback should take no arguments (it will be called with none) and its `this` will be set to the global
 // object (self, in a worker context)
+var eventQueue = [];
 
-// This method will run all ready events, and return the event loop with those events removed.
+// This method will run all ready events, and remove them from the event queue.
 spinEventLoop = function(currentTime, eventQueue) {
   var newEventQueue = [];
   if (typeof eventQueue === "Array") {
@@ -27,7 +28,7 @@ spinEventLoop = function(currentTime, eventQueue) {
       }
     });
   }
-  return newEventQueue;
+  eventQueue = newEventQueue;
 };
 
 setTimeout = function(code, delay) {
@@ -52,12 +53,11 @@ setInterval = function(code, delay) {
 };
 
 removeFromEventQueue = function(id) {
-  
+  eventQueue = eventQueue.filter(function(event) { return event.id !== id; });
+};
+
+addToEventQueue = function(event) {
+  eventQueue.push(event);
 };
 
 clearInterval = clearTimeout = removeFromEventQueue;
-
-runWithEventQueue = function(code, eventQueue) {
-  
-  return [eventQueue, returnValue];
-}

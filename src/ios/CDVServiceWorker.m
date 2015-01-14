@@ -318,8 +318,6 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         });
     };
     
-    context[@"spinEventLoop"] =
-    
     // Load the required polyfills.
     [self loadPolyfillsIntoContext:context];
 
@@ -330,13 +328,11 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     [self setContext:context];
 }
 
-JSValue *eventLoop = nil;
-
 - (JSValue *) executeJS:(NSString *)jsCode
 {
     JSValue *returnVal = [self.context evaluateScript:jsCode];
     JSValue *newEventLoop = [self.context[@"spinEventLoop"] callWithArguments:@[eventLoop]];
-    eventLoop = newEventLoop;
+    // TODO: Handle case where running the event loop adds new elements to the queue.
     return returnVal;
 }
 
