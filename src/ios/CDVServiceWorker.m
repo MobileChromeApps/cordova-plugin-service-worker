@@ -302,7 +302,24 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [self.requestDelegates removeObjectForKey:requestId];
         [interceptor passThrough];
     };
+    
+    context[@"callbackImmediate"] = ^(JSValue *callback) {
+        [callback callWithArguments:@[@41, @43, @47]];
+    };
 
+    context[@"returnCallbackImmediate"] = ^(JSValue *callback) {
+        [context[@"callback"] callWithArguments:@[callback]];
+    };
+
+    context[@"callbackDelayed"] = ^(JSValue *callback, JSValue *JSdelayTime) {
+        unsigned long long delayTime = [JSdelayTime toInt32];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayTime * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [callback callWithArguments:@[@41, @43, @47]];
+        });
+    };
+    
+    context[@"spinEventLoop"] =
+    
     // Load the required polyfills.
     [self loadPolyfillsIntoContext:context];
 
@@ -311,6 +328,16 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Save the JS context.
     [self setContext:context];
+}
+
+JSValue *eventLoop = nil;
+
+- (JSValue *) executeJS:(NSString *)jsCode
+{
+    JSValue *returnVal = [self.context evaluateScript:jsCode];
+    JSValue *newEventLoop = [self.context[@"spinEventLoop"] callWithArguments:@[eventLoop]];
+    eventLoop = newEventLoop;
+    return returnVal;
 }
 
 - (NSString *)readScriptAtRelativePath:(NSString*)relativePath
