@@ -1,4 +1,5 @@
-var self = this;
+(function(env){
+var self = env;
 
 // The event queue is a JavaScript array containing items which look like
 // {id: number,
@@ -12,10 +13,18 @@ var self = this;
 // the event is.
 // callback should take no arguments (it will be called with none) and its `this` will be set to the global
 // object (self, in a worker context)
-var eventQueue = [];
+var eventQueue = []; // TODO: Wrap this in a closure so it is not world visible
+
+var addToEventQueue = function(event) {
+  eventQueue.push(event);
+};
+
+var removeFromEventQueue = function(id) {
+  eventQueue = eventQueue.filter(function(event) { return event.id !== id; });
+};
 
 // This method will run all ready events, and remove them from the event queue.
-spinEventLoop = function(currentTime, eventQueue) {
+env.spinEventLoop = function(currentTime, eventQueue) {
   var newEventQueue = [];
   if (typeof eventQueue === "Array") {
     eventQueue.forEach(function(item) {
@@ -29,9 +38,10 @@ spinEventLoop = function(currentTime, eventQueue) {
     });
   }
   eventQueue = newEventQueue;
+  return newEventQueue;
 };
 
-setTimeout = function(code, delay) {
+env.setTimeout = function(code, delay) {
   var runTime = +(new Date()) + delay;
   if (typeof code === "string") {
     code = function() { eval(code); };
@@ -39,7 +49,7 @@ setTimeout = function(code, delay) {
   return addToEventQueue({timeToRun: runTime, ready: true, callback: code});
 };
 
-setInterval = function(code, delay) {
+env.setInterval = function(code, delay) {
   var initialRunTime = +(new Date()) + delay;
   if (typeof code === "string") {
     code = function() { eval(code); };
@@ -52,12 +62,5 @@ setInterval = function(code, delay) {
   return addToEventQueue({timeToRun: initialRunTime, ready: true, callback: code});
 };
 
-removeFromEventQueue = function(id) {
-  eventQueue = eventQueue.filter(function(event) { return event.id !== id; });
-};
-
-addToEventQueue = function(event) {
-  eventQueue.push(event);
-};
-
-clearInterval = clearTimeout = removeFromEventQueue;
+env.clearInterval = env.clearTimeout = removeFromEventQueue;
+})(this);
