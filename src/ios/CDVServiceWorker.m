@@ -253,17 +253,20 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Fire a message event in the JSContext.
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new MessageEvent({data:Kamino.parse('%@')}));", message];
-    [self.context evaluateScript:dispatchCode];
+    [self evaluateScript:dispatchCode];
 }
 
 - (void)installServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
+    [self evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
 }
 
 - (void)activateServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
+    [self evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
+}
+
+- (void) evaluateScript:(NSString *)script {
 }
 
 # pragma mark Helper Functions
@@ -328,7 +331,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 {
     // Create a ServiceWorker client.
     NSString *createClientCode = [NSString stringWithFormat:@"var client = new Client('%@');", url];
-    [self.context evaluateScript:createClientCode];
+    [self evaluateScript:createClientCode];
 }
 
 - (NSString *)readScriptAtRelativePath:(NSString *)relativePath
@@ -371,7 +374,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)loadScript:(NSString *)script intoContext:(JSContext *)context
 {
     // Evaluate the script.
-    [context evaluateScript:script];
+    [self evaluateScript:script];
 }
 
 - (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath intoContext:(JSContext *)context
@@ -396,7 +399,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Fire a fetch event in the JSContext
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[request URL] absoluteString], [requestId longLongValue]];
-    [self.context evaluateScript:dispatchCode];
+    [self evaluateScript:dispatchCode];
 }
 
 @end
