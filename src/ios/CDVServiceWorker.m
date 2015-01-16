@@ -37,7 +37,8 @@ static bool isServiceWorkerActive = NO;
 static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
-    if (!isServiceWorkerActive) return NO;
+NSLog(@"%@",[request URL]);
+if (!isServiceWorkerActive) return NO;
     // Check - is there a service worker for this request?
     // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
     if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
@@ -247,7 +248,15 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSLog(@"%@", value);
     }];
 
+    // Pipe JS logging in this context to NSLog.
+    // NOTE: Not the nicest of hacks, but useful!
+    [context evaluateScript:@"var console = {}"];
+    context[@"console"][@"log"] = ^(NSString *message) {
+        NSLog(@"JS log: %@", message);
+    };
+
     context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
+        NSLog(@"In handleFetchResponse");
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
@@ -269,6 +278,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
+        NSLog(@"In handleFetchDefault");
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
