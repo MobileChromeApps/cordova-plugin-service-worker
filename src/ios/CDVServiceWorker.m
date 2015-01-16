@@ -35,6 +35,9 @@
 static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
+    // Temporary: Disable URL handling
+    NSLog(@"%@",[request URL]);
+    return NO;
     // Check - is there a service worker for this request?
     // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
     if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
