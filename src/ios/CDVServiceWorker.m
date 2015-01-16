@@ -23,6 +23,8 @@
 
 #include <libkern/OSAtomic.h>
 
+static bool isServiceWorkerActive = NO;
+
 @interface FetchInterceptorProtocol : NSURLProtocol {}
 + (BOOL)canInitWithRequest:(NSURLRequest *)request;
 - (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
@@ -35,6 +37,7 @@
 static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
+    if (!isServiceWorkerActive) return NO;
     // Check - is there a service worker for this request?
     // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
     if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
@@ -387,6 +390,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
                 serviceWorkerActivated = YES;
                 [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
             }
+                isServiceWorkerActive = YES;
+
         }
     } else {
         NSLog(@"No service worker script defined");
