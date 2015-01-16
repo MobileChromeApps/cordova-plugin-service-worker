@@ -37,19 +37,26 @@ static bool isServiceWorkerActive = NO;
 static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
-NSLog(@"%@",[request URL]);
-if (!isServiceWorkerActive) return NO;
+    if ([[[request URL] absoluteString] hasSuffix:@"GeneratedWorker.html"]) {
+        return NO;
+    }
+    NSLog(@"-------------------");
+    NSLog(@"Fetching URL: %@",[request URL]);
+
     // Check - is there a service worker for this request?
     // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
     if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
+        NSLog(@"Passing through.");
         // Already seen; not handling
         return NO;
     } else {
-        if ([CDVServiceWorker instanceForRequest:request]) {
+        if ([CDVServiceWorker instanceForRequest:request] /* && [[[request URL] absoluteString] hasSuffix:@"index.html"] */) {
             // Handling
+            NSLog(@"Sending to SW.");
             return YES;
         } else {
             // No Service Worker installed; not handling
+            NSLog(@"NOT Sending to SW.");
             return NO;
         }
     }
@@ -71,7 +78,7 @@ if (!isServiceWorkerActive) return NO;
     NSNumber *requestId = [NSNumber numberWithLongLong:OSAtomicIncrement64(&requestCount)];
     [NSURLProtocol setProperty:requestId forKey:@"RequestId" inRequest:workerRequest];
 
-    [instanceForRequest fetchResponseForRequest:workerRequest withId:requestId delegateTo:self];
+    [instanceForRequest addRequestToQueue:workerRequest withId:requestId delegateTo:self];
 }
 
 - (void)stopLoading {
@@ -127,12 +134,29 @@ NSString * const REGISTRATION_KEY_WAITING = @"waiting";
 
 NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
 
+@interface ServiceWorkerRequest : NSObject
+
+@property (nonatomic, strong) NSURLRequest *request;
+@property (nonatomic, strong) NSNumber *requestId;
+@property (nonatomic, strong) NSURLProtocol *protocol;
+
+@end
+
+@implementation ServiceWorkerRequest
+
+@synthesize request = _request;
+@synthesize requestId = _requestId;
+@synthesize protocol = _protocol;
+
+@end
+
 @implementation CDVServiceWorker
 
 @synthesize context = _context;
 @synthesize workerWebView = _workerWebView;
 @synthesize registration = _registration;
 @synthesize requestDelegates = _requestDelegates;
+@synthesize requestQueue = _requestQueue;
 @synthesize serviceWorkerScriptFilename = _serviceWorkerScriptFilename;
 
 - (NSString *)hashForString:(NSString *)string
@@ -152,6 +176,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     singletonInstance = self;
 
     self.requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
+    self.requestQueue = [NSMutableArray new];
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
 
@@ -278,7 +303,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
-        NSLog(@"In handleFetchDefault");
+        NSLog(@"In handleFetchDefault: %@", [response[@"url"] toString]);
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
@@ -356,6 +381,9 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 - (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath intoContext:(JSContext *)context
 {
+    // Log!
+    NSLog(@"Loading script: %@", relativePath);
+
     // Read the script.
     NSString *script = [self readScriptAtRelativePath:relativePath];
 
@@ -400,8 +428,10 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
                 serviceWorkerActivated = YES;
                 [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
             }
-                isServiceWorkerActive = YES;
+            isServiceWorkerActive = YES;
 
+            NSLog(@"SW active!  Processing request queue.");
+            [self processRequestQueue];
         }
     } else {
         NSLog(@"No service worker script defined");
@@ -413,15 +443,45 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)webView:(UIWebView *)wv didFailLoadWithError:(NSError *)error {}
 
 
-// Test whether a resource should be fetched
-- (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
+- (void)addRequestToQueue:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
 {
-    // Register the request and delegate
-    [self.requestDelegates setObject:protocol forKey:requestId];
+    // Log!
+    NSLog(@"Adding to queue: %@", [[request URL] absoluteString]);
 
-    // Fire a fetch event in the JSContext
-    NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[request URL] absoluteString], [requestId longLongValue]];
-    [self.context evaluateScript:dispatchCode];
+    // Create a request object.
+    ServiceWorkerRequest *swRequest = [ServiceWorkerRequest new];
+    swRequest.request = request;
+    swRequest.requestId = requestId;
+    swRequest.protocol = protocol;
+
+    // Add the request object to the queue.
+    [self.requestQueue addObject:swRequest];
+
+    // Process the request queue.
+    [self processRequestQueue];
+}
+
+- (void)processRequestQueue {
+    // If the ServiceWorker isn't active, there's nothing we can do yet.
+    if (!isServiceWorkerActive) {
+        return;
+    }
+
+    for (ServiceWorkerRequest *swRequest in self.requestQueue) {
+        // Log!
+        NSLog(@"Processing from queue: %@", [[swRequest.request URL] absoluteString]);
+
+        // Register the request and delegate.
+        [self.requestDelegates setObject:swRequest.protocol forKey:swRequest.requestId];
+
+        // Fire a fetch event in the JSContext.
+        NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[swRequest.request URL] absoluteString], [swRequest.requestId longLongValue]];
+        [self.context evaluateScript:dispatchCode];
+    }
+
+    // Clear the queue.
+    // TODO: Deal with the possibility that requests could be added during the loop that we might not necessarily want to remove.
+    [self.requestQueue removeAllObjects];
 }
 
 @end
