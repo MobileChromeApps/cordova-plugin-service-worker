@@ -243,9 +243,9 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)createServiceWorkerFromScript:(NSString *)scriptUrl
 {
 
-    [self.workerWebView stringByEvaluatingJavaScriptFromString:@"var internalWorker = new Worker('www/swpoly.js'); internalWorker.onmessage = function(ev) { if (ev.data[0] === 'handleFetchDefault') handleFetchDefault(ev.data[1], ev.data[2]); console.log('got a message', ev.data);}"];
+    // Get the JSContext from the webview
+    JSContext *context = [self.workerWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
 
-/*
     context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
@@ -282,7 +282,10 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
         [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
-*/
+
+    // Create a dedicated worker in the webview
+    [self.workerWebView stringByEvaluatingJavaScriptFromString:@"var internalWorker = new Worker('www/swpoly.js'); internalWorker.onmessage = function(ev) { if (ev.data[0] === 'handleFetchDefault') handleFetchDefault(ev.data[1], ev.data[2]); console.log('got a message', ev.data);}"];
+
     // Load the required assets.
     [self loadServiceWorkerAssetsIntoWebView:self.workerWebView];
 
