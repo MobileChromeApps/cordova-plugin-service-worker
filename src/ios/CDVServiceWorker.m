@@ -393,6 +393,10 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     }
 }
 
+- (void)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request {}
+- (void)webViewDidStartLoad:(UIWebView *)wv {}
+- (void)webView:(UIWebView *)wv didFailLoadWithError:(NSError *)error {}
+
 
 // Test whether a resource should be fetched
 - (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
