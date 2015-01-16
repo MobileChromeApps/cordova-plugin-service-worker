@@ -126,8 +126,10 @@ NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
 @implementation CDVServiceWorker
 
 @synthesize context = _context;
+@synthesize workerWebView = _workerWebView;
 @synthesize registration = _registration;
 @synthesize requestDelegates = _requestDelegates;
+@synthesize serviceWorkerScriptFilename = _serviceWorkerScriptFilename;
 
 - (NSString *)hashForString:(NSString *)string
 {
@@ -145,51 +147,19 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // TODO: Make this better; probably a registry
     singletonInstance = self;
 
-    _requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
+    self.requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
 
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
-    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
-    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+    self.workerWebView = [[UIWebView alloc] init]; // Headless
+    [self.viewController.view addSubview:self.workerWebView];
+    [self.workerWebView setDelegate:self];
+    [self.workerWebView loadHTMLString:@"<html><title>Service Worker Page</title></html>" baseURL:[NSURL fileURLWithPath:[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"GeneratedWorker.html" ] ]];
 
-    NSString *serviceWorkerScriptFilename = nil;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
-        serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
-    }
-    if (serviceWorkerScriptFilename != nil) {
-        NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", serviceWorkerScriptFilename];
-        NSLog(@"ServiceWorker relative path: %@", serviceWorkerScriptRelativePath);
-        NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
-        if (serviceWorkerScript != nil) {
-            if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
-                serviceWorkerInstalled = NO;
-                serviceWorkerActivated = NO;
-                [defaults setBool:NO forKey:SERVICE_WORKER_INSTALLED];
-                [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
-                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
-            }
-            [self createServiceWorkerFromScript:serviceWorkerScript];
-            [self createServiceWorkerClientWithUrl:serviceWorkerScriptFilename];
-            if (!serviceWorkerInstalled) {
-                [self installServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerInstalled = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
-            }
-            // TODO: Don't do this immediately. Wait for installation to complete
-            if (!serviceWorkerActivated) {
-                [self activateServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerActivated = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
-            }
-        }
-    } else {
-        NSLog(@"No service worker script defined");
+        self.serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
     }
 }
 
@@ -267,8 +237,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 - (void)createServiceWorkerFromScript:(NSString *)script
 {
-    // Create a JS context.
-    JSContext *context = [JSContext new];
+    // Get the JSContext from the webview
+    JSContext *context = [self.workerWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
 
     [context setExceptionHandler:^(JSContext *context, JSValue *value) {
         NSLog(@"%@", value);
@@ -382,6 +352,45 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Load the script into the context.
     [self loadScript:script intoContext:context];
+}
+
+- (void)webViewDidFinishLoad:(UIWebView *)wv
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
+    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
+    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+    if (self.serviceWorkerScriptFilename != nil) {
+        NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", self.serviceWorkerScriptFilename];
+        NSLog(@"ServiceWorker relative path: %@", serviceWorkerScriptRelativePath);
+        NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
+        if (serviceWorkerScript != nil) {
+            if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
+                serviceWorkerInstalled = NO;
+                serviceWorkerActivated = NO;
+                [defaults setBool:NO forKey:SERVICE_WORKER_INSTALLED];
+                [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
+                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+            }
+            [self createServiceWorkerFromScript:serviceWorkerScript];
+            [self createServiceWorkerClientWithUrl:self.serviceWorkerScriptFilename];
+            if (!serviceWorkerInstalled) {
+                [self installServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerInstalled = YES;
+                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
+            }
+            // TODO: Don't do this immediately. Wait for installation to complete
+            if (!serviceWorkerActivated) {
+                [self activateServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerActivated = YES;
+                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
+            }
+        }
+    } else {
+        NSLog(@"No service worker script defined");
+    }
 }
 
 

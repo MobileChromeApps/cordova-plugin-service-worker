@@ -24,6 +24,7 @@
     </js-module>
 
     <!-- Assets for use by the worker (worker env) -->
+    <asset src="www/sw_assets/swpoly.js" target="swpoly.js" />
     <asset src="www/sw_assets/client.js" target="sw_assets/client.js" />
     <asset src="www/sw_assets/event.js" target="sw_assets/event.js" />
     <asset src="www/sw_assets/fetch.js" target="sw_assets/fetch.js" />
