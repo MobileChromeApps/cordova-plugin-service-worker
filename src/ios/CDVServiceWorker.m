@@ -243,7 +243,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)createServiceWorkerFromScript:(NSString *)scriptUrl
 {
 
-    [self.workerWebView stringByEvaluatingJavaScriptFromString:@"var internalWorker = new Worker('www/swpoly.js'); internalWorker.onmessage = function(ev) { console.log('got a message', ev.data);}"];
+    [self.workerWebView stringByEvaluatingJavaScriptFromString:@"var internalWorker = new Worker('www/swpoly.js'); internalWorker.onmessage = function(ev) { if (ev.data[0] === 'handleFetchDefault') handleFetchDefault(ev.data[1], ev.data[2]); console.log('got a message', ev.data);}"];
 
 /*
     context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {

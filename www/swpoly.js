@@ -1,6 +1,5 @@
 /* Here is the worker */
 s4w = self;
-s5w = 'Here is a thing';
 
 onmessage = function(ev) {
   if (ev.data instanceof Array) {
@@ -18,10 +17,19 @@ onmessage = function(ev) {
         postMessage("Error");
         postMessage(ex);
       }
+    } else if (ev.data[0] === 'Echo') {
+      postMessage(ev.data[1]);
+    } else if (ev.data[0] === 'Event') {
+      // On Event, the event type will be in data[1], and the initialization parameters in data[2] through data[n]
+      var newEvent;
+      if (ev.data[1] === 'Fetch') {
+        newEvent = new FetchEvent(ev.data[2]);
+      } else if (ev.data[1] === 'Install') {
+        newEvent = new ExtendableEvent('install');
+      }
+      if (newEvent) {
+        self.dispatchEvent(newEvent);
+      }
     }
-  } else {
-  console.log(ev);
-  postMessage(s5w);
-  postMessage(self.importScripts ? "YES" : "NO");
-}
+  }
 };

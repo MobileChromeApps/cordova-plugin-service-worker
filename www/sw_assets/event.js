@@ -46,6 +46,7 @@ addEventListener = function(eventName, callback) {
 };
 
 dispatchEvent = function(event) {
+  postMessage("Dispatching " + event.type + " event");
   (EventQueue[event.type] || []).forEach(function(handler) {
     if (typeof handler === 'function') {
       handler.call(self, event);

@@ -36,5 +36,6 @@ FetchEvent.prototype.forwardTo = function(url) {};
 
 FetchEvent.prototype.default = function(ev) {
   console.log("In fetch.default");
-  handleFetchDefault(ev.__requestId, {url:ev.request.url});
+  //handleFetchDefault(ev.__requestId, {url:ev.request.url});
+  postMessage(['handleFetchDefault', ev.__requestId, {url:ev.request.url}]);
 };
