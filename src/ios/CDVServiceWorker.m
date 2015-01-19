@@ -138,38 +138,43 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Fire a message event in the JSContext.
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new MessageEvent({data:Kamino.parse('%@')}));", message];
-    [self.context evaluateScript:dispatchCode];
+    [self evaluateScript:dispatchCode];
 }
 
 - (void)installServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
+    [self evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
 }
 
 - (void)activateServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
+    [self evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
 }
 
 # pragma mark Helper Functions
 
+- (void)evaluateScript:(NSString *)script
+{
+    [self.workerWebView performSelectorOnMainThread:@selector(stringByEvaluatingJavaScriptFromString:) withObject:script waitUntilDone:YES];
+}
+
 - (void)createServiceWorkerFromScript:(NSString *)script
 {
     // Get the JSContext from the webview
-    JSContext *context = [self.workerWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
+    self.context = [self.workerWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
 
-    [context setExceptionHandler:^(JSContext *context, JSValue *value) {
+    [self.context setExceptionHandler:^(JSContext *context, JSValue *value) {
         NSLog(@"%@", value);
     }];
 
     // Pipe JS logging in this context to NSLog.
     // NOTE: Not the nicest of hacks, but useful!
-    [context evaluateScript:@"var console = {}"];
-    context[@"console"][@"log"] = ^(NSString *message) {
+    [self evaluateScript:@"var console = {}"];
+    self.context[@"console"][@"log"] = ^(NSString *message) {
         NSLog(@"JS log: %@", message);
     };
 
-    context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
+    self.context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSLog(@"In handleFetchResponse");
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
@@ -191,7 +196,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [interceptor handleAResponse:urlResponse withSomeData:data];
     };
 
-    context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
+    self.context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSLog(@"In handleFetchDefault: %@", [response[@"url"] toString]);
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
@@ -203,26 +208,23 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // This function is called by `postMessage`, defined in message.js.
     // `postMessage` serializes the message using kamino.js and passes it here.
-    context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
+    self.context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
         [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
 
     // Load the required assets.
-    [self loadServiceWorkerAssetsIntoContext:context];
+    [self loadServiceWorkerAssetsIntoContext];
 
     // Load the ServiceWorker script.
-    [self loadScript:script intoContext:context];
-
-    // Save the JS context.
-    [self setContext:context];
+    [self loadScript:script];
 }
 
 - (void)createServiceWorkerClientWithUrl:(NSString *)url
 {
     // Create a ServiceWorker client.
     NSString *createClientCode = [NSString stringWithFormat:@"var client = new Client('%@');", url];
-    [self.context evaluateScript:createClientCode];
+    [self evaluateScript:createClientCode];
 }
 
 - (NSString *)readScriptAtRelativePath:(NSString *)relativePath
@@ -246,7 +248,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     return script;
 }
 
-- (void)loadServiceWorkerAssetsIntoContext:(JSContext *)context
+- (void)loadServiceWorkerAssetsIntoContext
 {
     // Specify the assets directory.
     // TODO: Move assets up one directory, so they're not in www.
@@ -258,17 +260,17 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // Read and load each asset.
     for (NSString *assetFilename in assetFilenames) {
         NSString *relativePath = [NSString stringWithFormat:@"www/sw_assets/%@", assetFilename];
-        [self readAndLoadScriptAtRelativePath:relativePath intoContext:context];
+        [self readAndLoadScriptAtRelativePath:relativePath];
     }
 }
 
-- (void)loadScript:(NSString *)script intoContext:(JSContext *)context
+- (void)loadScript:(NSString *)script
 {
     // Evaluate the script.
-    [context evaluateScript:script];
+    [self evaluateScript:script];
 }
 
-- (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath intoContext:(JSContext *)context
+- (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath
 {
     // Log!
     NSLog(@"Loading script: %@", relativePath);
@@ -281,7 +283,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     }
 
     // Load the script into the context.
-    [self loadScript:script intoContext:context];
+    [self loadScript:script];
 }
 
 - (void)webViewDidFinishLoad:(UIWebView *)wv
@@ -365,7 +367,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
         // Fire a fetch event in the JSContext.
         NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[swRequest.request URL] absoluteString], [swRequest.requestId longLongValue]];
-        [self.context evaluateScript:dispatchCode];
+        [self evaluateScript:dispatchCode];
     }
 
     // Clear the queue.
