@@ -19,6 +19,7 @@
 
 #import <Cordova/CDV.h>
 #import <JavaScriptCore/JavaScriptCore.h>
+#import <CommonCrypto/CommonDigest.h>
 #import "CDVServiceWorker.h"
 
 #include <libkern/OSAtomic.h>
@@ -131,7 +132,42 @@ NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
 
 - (NSString *)hashForString:(NSString *)string
 {
-    return @"17";
+    const char *cstring = [string UTF8String];
+    size_t length = strlen(cstring);
+
+    // We're assuming below that CC_LONG is an unsigned int; fail here if that's not true.
+    assert(sizeof(CC_LONG) == sizeof(unsigned int));
+
+    unsigned char hash[33];
+
+    CC_MD5_CTX hashContext;
+
+    // We'll almost certainly never see >4GB files, but loop with UINT32_MAX sized-chunks just to be correct
+    CC_MD5_Init(&hashContext);
+    CC_LONG dataToHash;
+    while (length != 0) {
+        if (length > UINT32_MAX) {
+            dataToHash = UINT32_MAX;
+            length -= UINT32_MAX;
+        } else {
+            dataToHash = (CC_LONG)length;
+            length = 0;
+        }
+        CC_MD5_Update(&hashContext, cstring, dataToHash);
+        cstring += dataToHash;
+    }
+    CC_MD5_Final(hash, &hashContext);
+
+    // Construct a simple base-16 representation of the hash for comparison
+    for (int i=15; i >= 0; --i) {
+        hash[i*2+1] = 'a' + (hash[i] & 0x0f);
+        hash[i*2] = 'a' + ((hash[i] >> 4) & 0x0f);
+    }
+    // Null-terminate
+    hash[32] = 0;
+
+    return [NSString stringWithCString:(char *)hash
+                                          encoding:NSUTF8StringEncoding];
 }
 
 CDVServiceWorker *singletonInstance = nil; // TODO: Something better
