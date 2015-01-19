@@ -18,6 +18,7 @@
  */
 
 #import <Cordova/CDVPlugin.h>
+#import <JavaScriptCore/JSContext.h>
 
 extern NSString * const SERVICE_WORKER;
 extern NSString * const SERVICE_WORKER_ACTIVATED;

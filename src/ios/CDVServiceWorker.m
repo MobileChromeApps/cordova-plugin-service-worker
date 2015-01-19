@@ -20,104 +20,10 @@
 #import <Cordova/CDV.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import "CDVServiceWorker.h"
-
-#include <libkern/OSAtomic.h>
+#import "FetchInterceptorProtocol.h"
+#import "ServiceWorkerRequest.h"
 
 static bool isServiceWorkerActive = NO;
-
-@interface FetchInterceptorProtocol : NSURLProtocol {}
-+ (BOOL)canInitWithRequest:(NSURLRequest *)request;
-- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
-@property (nonatomic, retain) NSURLConnection *connection;
-@end
-
-@implementation FetchInterceptorProtocol
-@synthesize connection=_connection;
-
-static int64_t requestCount = 0;
-
-+ (BOOL)canInitWithRequest:(NSURLRequest *)request {
-    if ([[[request URL] absoluteString] hasSuffix:@"GeneratedWorker.html"]) {
-        return NO;
-    }
-    NSLog(@"-------------------");
-    NSLog(@"Fetching URL: %@",[request URL]);
-
-    // Check - is there a service worker for this request?
-    // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
-    if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
-        NSLog(@"Passing through.");
-        // Already seen; not handling
-        return NO;
-    } else {
-        if ([CDVServiceWorker instanceForRequest:request] /* && [[[request URL] absoluteString] hasSuffix:@"index.html"] */) {
-            // Handling
-            NSLog(@"Sending to SW.");
-            return YES;
-        } else {
-            // No Service Worker installed; not handling
-            NSLog(@"NOT Sending to SW.");
-            return NO;
-        }
-    }
-}
-
-+ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
-    return request;
-}
-
-+ (BOOL)requestIsCacheEquivalent:(NSURLRequest *)a toRequest:(NSURLRequest *)b {
-    return [super requestIsCacheEquivalent:a toRequest:b];
-}
-
-- (void)startLoading {
-    // Attach a reference to the Service Worker to a copy of the request
-    NSMutableURLRequest *workerRequest = [self.request mutableCopy];
-    CDVServiceWorker *instanceForRequest = [CDVServiceWorker instanceForRequest:workerRequest];
-    [NSURLProtocol setProperty:instanceForRequest forKey:@"ServiceWorkerPlugin" inRequest:workerRequest];
-    NSNumber *requestId = [NSNumber numberWithLongLong:OSAtomicIncrement64(&requestCount)];
-    [NSURLProtocol setProperty:requestId forKey:@"RequestId" inRequest:workerRequest];
-
-    [instanceForRequest addRequestToQueue:workerRequest withId:requestId delegateTo:self];
-}
-
-- (void)stopLoading {
-    [self.connection cancel];
-    self.connection = nil;
-}
-
-- (void)passThrough {
-    // Flag this request as a pass-through so that the URLProtocol doesn't try to grab it again
-    NSMutableURLRequest *taggedRequest = [self.request mutableCopy];
-    [NSURLProtocol setProperty:@YES forKey:@"PassThrough" inRequest:taggedRequest];
-
-    // Initiate a new request to actually retrieve the resource
-    self.connection = [NSURLConnection connectionWithRequest:taggedRequest delegate:self];
-}
-
-- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data {
-    // TODO: Move cache storage policy into args
-    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-    [self.client URLProtocol:self didLoadData:data];
-    [self.client URLProtocolDidFinishLoading:self];
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    [self.client URLProtocol:self didLoadData:data];
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    [self.client URLProtocolDidFinishLoading:self];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-    [self.client URLProtocol:self didFailWithError:error];
-}
-@end
 
 NSString * const SERVICE_WORKER = @"service_worker";
 NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
@@ -133,22 +39,6 @@ NSString * const REGISTRATION_KEY_SCOPE = @"scope";
 NSString * const REGISTRATION_KEY_WAITING = @"waiting";
 
 NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
-
-@interface ServiceWorkerRequest : NSObject
-
-@property (nonatomic, strong) NSURLRequest *request;
-@property (nonatomic, strong) NSNumber *requestId;
-@property (nonatomic, strong) NSURLProtocol *protocol;
-
-@end
-
-@implementation ServiceWorkerRequest
-
-@synthesize request = _request;
-@synthesize requestId = _requestId;
-@synthesize protocol = _protocol;
-
-@end
 
 @implementation CDVServiceWorker
 
@@ -245,7 +135,6 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)postMessage:(CDVInvokedUrlCommand*)command
 {
     NSString *message = [command argumentAtIndex:0];
-    NSDictionary *targetOrigin = [command argumentAtIndex:1];
 
     // Fire a message event in the JSContext.
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new MessageEvent({data:Kamino.parse('%@')}));", message];

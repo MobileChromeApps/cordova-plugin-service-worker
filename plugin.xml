@@ -40,6 +40,10 @@
         </config-file>
         <header-file src="src/ios/CDVServiceWorker.h" />
         <source-file src="src/ios/CDVServiceWorker.m" />
+        <header-file src="src/ios/FetchInterceptorProtocol.h" />
+        <source-file src="src/ios/FetchInterceptorProtocol.m" />
+        <header-file src="src/ios/ServiceWorkerRequest.h" />
+        <source-file src="src/ios/ServiceWorkerRequest.m" />
         <framework src="JavaScriptCore.framework" />
     </platform>
 
