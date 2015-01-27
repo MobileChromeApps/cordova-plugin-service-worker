@@ -219,8 +219,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [self.requestDelegates removeObjectForKey:requestId];
 
         NSData *data = [[response[@"body"] toString] dataUsingEncoding:NSUTF8StringEncoding];
-        JSValue *headerList = response[@"header_list"];
-        NSString *mimeType = [headerList[@"mime_type"] toString];
+        JSValue *headerList = response[@"headerList"];
+        NSString *mimeType = [headerList[@"mimeType"] toString];
         NSString *encoding = @"utf-8";
         NSString *url = [response[@"url"] toString]; // TODO: Can this ever be different than the request url? if not, don't allow it to be overridden
 
@@ -402,7 +402,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [self.requestDelegates setObject:swRequest.protocol forKey:swRequest.requestId];
 
         // Fire a fetch event in the JSContext.
-        NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[swRequest.request URL] absoluteString], [swRequest.requestId longLongValue]];
+        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@')", [[swRequest.request URL] absoluteString]];
+        NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:%@, id:'%lld'}));", requestCode, [swRequest.requestId longLongValue]];
         [self evaluateScript:dispatchCode];
     }
 

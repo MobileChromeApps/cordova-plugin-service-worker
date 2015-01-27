@@ -17,20 +17,9 @@ FetchEvent = function(eventInitDict) {
 };
 FetchEvent.prototype = new Event();
 
-FetchEvent.prototype.sendResponse = function(url, body) {
-    handleFetchResponse(this.__requestId, {
-        url:url,
-        status:200,
-        status_message:'OK',
-        header_list: {
-            mime_type:'text/html'
-        },
-        type:'default',
-        body:body
-    });
+FetchEvent.prototype.respondWith = function(response) {
+  handleFetchResponse(this.__requestId, response);
 };
-
-FetchEvent.prototype.respondWith = function(response) {};
 
 FetchEvent.prototype.forwardTo = function(url) {};
 
@@ -38,3 +27,16 @@ FetchEvent.prototype.default = function(ev) {
   console.log("In fetch.default");
   handleFetchDefault(ev.__requestId, {url:ev.request.url});
 };
+
+// This is *incredibly* simplified right now.
+Request = function(url) {
+  this.url = url;
+};
+
+Response = function(url, body) {
+  this.url = url;
+  this.body = body;
+  this.status = 200;
+  this.headerList = { mimeType: "text/html" };
+};
+
