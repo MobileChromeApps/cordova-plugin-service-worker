@@ -109,3 +109,36 @@ Object.defineProperty(this, 'onfetch', {
   get: eventGetter('fetch'),
   set: eventSetter('fetch')
 });
+
+
+InstallEvent = function() {
+  this.activeWorker = null;
+  return self;
+};
+InstallEvent.prototype = new ExtendableEvent('install');
+
+ActivateEvent = function() {
+  return self;
+};
+ActivateEvent.prototype = new ExtendableEvent('activate');
+
+FireInstallEvent = function() {
+  var ev = new InstallEvent();
+  var InstallFailed;
+  dispatchEvent(ev);
+  if (ev.promises instanceof Array) {
+    return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
+  } else {
+    return Promise.resolve();
+  }
+};
+
+FireActivateEvent = function() {
+  var ev = new ActivateEvent();
+  dispatchEvent(ev);
+  if (ev.promises instanceof Array) {
+    return Promise.all(ev.promises);
+  } else {
+    return Promise.resolve();
+  }
+};
