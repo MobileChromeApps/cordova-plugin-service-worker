@@ -28,26 +28,25 @@
 static int64_t requestCount = 0;
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
+    // We don't want to intercept any requests for the worker page.
     if ([[[request URL] absoluteString] hasSuffix:@"GeneratedWorker.html"]) {
         return NO;
     }
-    NSLog(@"-------------------");
-    NSLog(@"Fetching URL: %@",[request URL]);
 
     // Check - is there a service worker for this request?
     // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
     if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
-        NSLog(@"Passing through.");
         // Already seen; not handling
+        return NO;
+    } else if ([NSURLProtocol propertyForKey:@"PureFetch" inRequest:request]) {
+        // Fetching directly; bypass ServiceWorker.
         return NO;
     } else {
         if ([CDVServiceWorker instanceForRequest:request]) {
             // Handling
-            NSLog(@"Sending to SW.");
             return YES;
         } else {
             // No Service Worker installed; not handling
-            NSLog(@"NOT Sending to SW.");
             return NO;
         }
     }
@@ -110,3 +109,4 @@ static int64_t requestCount = 0;
 }
 
 @end
+

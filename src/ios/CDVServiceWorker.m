@@ -21,6 +21,7 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <CommonCrypto/CommonDigest.h>
 #import "CDVServiceWorker.h"
+#import "FetchConnectionDelegate.h"
 #import "FetchInterceptorProtocol.h"
 #import "ServiceWorkerRequest.h"
 
@@ -211,14 +212,14 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     self.context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
-        NSLog(@"In handleFetchResponse");
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
         [self.requestDelegates removeObjectForKey:requestId];
 
-        NSData *data = [[response[@"body"] toString] dataUsingEncoding:NSUTF8StringEncoding];
+        // Convert the response body to base64.
+        NSData *data = [NSData dataFromBase64String:[response[@"body"] toString]];
         JSValue *headerList = response[@"headerList"];
         NSString *mimeType = [headerList[@"mimeType"] toString];
         NSString *encoding = @"utf-8";
@@ -233,13 +234,24 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     self.context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
-        NSLog(@"In handleFetchDefault: %@", [response[@"url"] toString]);
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
         [self.requestDelegates removeObjectForKey:requestId];
         [interceptor passThrough];
+    };
+
+    self.context[@"handleTrueFetch"] = ^(JSValue *resourceUrl, JSValue *resolve, JSValue *reject) {
+        // Create the request.
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[resourceUrl toString]]];
+        [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:request];
+
+        // Create a connection and send the request.
+        FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
+        delegate.resolve = resolve;
+        delegate.reject = reject;
+        [NSURLConnection connectionWithRequest:request delegate:delegate];
     };
 
     // This function is called by `postMessage`, defined in message.js.

@@ -18,17 +18,17 @@ FetchEvent = function(eventInitDict) {
 FetchEvent.prototype = new Event();
 
 FetchEvent.prototype.respondWith = function(response) {
+  response.body = window.btoa(response.body);
   handleFetchResponse(this.__requestId, response);
 };
 
 FetchEvent.prototype.forwardTo = function(url) {};
 
 FetchEvent.prototype.default = function(ev) {
-  console.log("In fetch.default");
   handleFetchDefault(ev.__requestId, {url:ev.request.url});
 };
 
-// This is *incredibly* simplified right now.
+// These objects are *incredibly* simplified right now.
 Request = function(url) {
   this.url = url;
 };
@@ -39,4 +39,18 @@ Response = function(url, body) {
   this.status = 200;
   this.headerList = { mimeType: "text/html" };
 };
+
+// This function returns a promise with a response for fetching the given resource.
+function fetch(resourceUrl) {
+  return new Promise(function(innerResolve, reject) {
+    // Wrap the resolve callback so we can decode the response body.
+    var resolve = function(response) {
+        response.body = window.atob(response.body);
+        innerResolve(response);
+    }
+
+    // Call a native function to fetch the resource.
+    handleTrueFetch(resourceUrl, resolve, reject);
+  });
+}
 
