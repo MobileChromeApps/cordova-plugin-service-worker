@@ -18,8 +18,13 @@ FetchEvent = function(eventInitDict) {
 FetchEvent.prototype = new Event();
 
 FetchEvent.prototype.respondWith = function(response) {
+  // Prevent the default handler from running, so that it doesn't override this response.
+  this.preventDefault();
+
+  // Store the id locally, for use in the `convertAndHandle` function.
   var requestId = this.__requestId;
 
+  // Convert the response body to an array buffer and send the response to native.
   var convertAndHandle = function(response) {
     response.body = window.btoa(response.body);
     handleFetchResponse(requestId, response);
