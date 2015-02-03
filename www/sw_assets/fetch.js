@@ -18,8 +18,20 @@ FetchEvent = function(eventInitDict) {
 FetchEvent.prototype = new Event();
 
 FetchEvent.prototype.respondWith = function(response) {
-  response.body = window.btoa(response.body);
-  handleFetchResponse(this.__requestId, response);
+  var requestId = this.__requestId;
+
+  var convertAndHandle = function(response) {
+    response.body = window.btoa(response.body);
+    handleFetchResponse(requestId, response);
+  }
+
+  // TODO: Find a better way to determine whether `response` is a promise.
+  if (response.then) {
+    // `response` is a promise!
+    response.then(convertAndHandle);
+  } else {
+    convertAndHandle(response);
+  }
 };
 
 FetchEvent.prototype.forwardTo = function(url) {};
