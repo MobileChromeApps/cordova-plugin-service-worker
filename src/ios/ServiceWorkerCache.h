@@ -16,11 +16,12 @@
  specific language governing permissions and limitations
  under the License.
  */
+#import <CoreData/CoreData.h>
 
 @interface ServiceWorkerCache : NSManagedObject { }
 
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request; withOptions:(ServiceWorkerCacheMatchOptions *)options;
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
 -(void) putRequest:(NSURLRequest *)request andResponse:(NSURLResponse *)response;
 -(bool) deleteRequest:(NSURLRequest *)request;
 
@@ -32,6 +33,6 @@
 -(NSArray*)getCaches;
 -(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName;
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request; withOptions:(ServiceWorkerCacheMatchOptions *)options;
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
 
 @end

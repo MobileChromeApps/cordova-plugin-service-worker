@@ -21,8 +21,42 @@
 
 @implementation ServiceWorkerCache
 
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request
+{
+    return [self matchForRequest:request withOptions:@{}];
+}
+
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
+{
+}
+
+-(void) putRequest:(NSURLRequest *)request andResponse:(NSURLResponse *)response
+{
+}
+
+-(bool) deleteRequest:(NSURLRequest *)request
+{
+}
+
 @end
 
 @implementation ServiceWorkerCacheStorage
+
+-(NSArray*)getCaches
+{
+}
+
+-(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName
+{
+}
+
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request
+{
+    return [self matchForRequest:request withOptions:@{}];
+}
+
+-(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
+{
+}
 
 @end
