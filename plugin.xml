@@ -45,6 +45,8 @@
         <source-file src="src/ios/FetchInterceptorProtocol.m" />
         <header-file src="src/ios/ServiceWorkerRequest.h" />
         <source-file src="src/ios/ServiceWorkerRequest.m" />
+        <header-file src="src/ios/ServiceWorkerCache.h" />
+        <source-file src="src/ios/ServiceWorkerCache.m" />
         <framework src="JavaScriptCore.framework" />
     </platform>
 
