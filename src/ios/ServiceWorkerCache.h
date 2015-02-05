@@ -25,6 +25,7 @@
 -(void) putRequest:(NSURLRequest *)request andResponse:(NSURLResponse *)response;
 -(bool) deleteRequest:(NSURLRequest *)request;
 
+@property (nonatomic, retain) NSMutableDictionary *cache;
 @end
 
 @interface ServiceWorkerCacheStorage : NSManagedObject { }
@@ -35,4 +36,5 @@
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
 
+@property (nonatomic, retain) NSMutableDictionary *caches;
 @end
