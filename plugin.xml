@@ -48,6 +48,7 @@
         <header-file src="src/ios/ServiceWorkerCache.h" />
         <source-file src="src/ios/ServiceWorkerCache.m" />
         <framework src="JavaScriptCore.framework" />
+        <framework src="CoreData.framework" />
     </platform>
 
 </plugin>
