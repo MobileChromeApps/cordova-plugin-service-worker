@@ -18,6 +18,7 @@
  */
 
 #import "FetchConnectionDelegate.h"
+#import "ServiceWorkerResponse.h"
 
 @implementation FetchConnectionDelegate
 
@@ -41,9 +42,17 @@
 }
  
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    // Convert the body to base64.
     NSString *encodedBody = [self.responseData base64Encoding];
-    NSDictionary *dictionary = [NSDictionary dictionaryWithObjects:@[@"url", encodedBody] forKeys:@[@"url", @"body"]];
-    [self.resolve callWithArguments:@[dictionary]];
+
+    // Create the response object.
+    ServiceWorkerResponse *response = [ServiceWorkerResponse new];
+    response.url = @"url";
+    response.body = encodedBody;
+
+    // Convert the response to a dictionary and send it to the promise resolver.
+    NSDictionary *responseDictionary = [response toDictionary];
+    [self.resolve callWithArguments:@[responseDictionary]];
 }
  
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
@@ -51,3 +60,4 @@
 }
 
 @end
+
