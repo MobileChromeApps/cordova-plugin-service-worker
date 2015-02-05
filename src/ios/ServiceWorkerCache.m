@@ -19,8 +19,6 @@
 
 #import "ServiceWorkerCache.h"
 
-static NSMutableDictionary *cacheStorageMap;
-
 @implementation ServiceWorkerCache
 
 @synthesize cache=cache_;
@@ -63,19 +61,6 @@ static NSMutableDictionary *cacheStorageMap;
 
 @synthesize caches=caches_;
 
-+(ServiceWorkerCacheStorage*)cacheStorageForScope:(NSURL *)scope
-{
-    if (cacheStorageMap == nil) {
-        cacheStorageMap = [[NSMutableDictionary alloc] initWithCapacity:1];
-    }
-    ServiceWorkerCacheStorage *cachesForScope = (ServiceWorkerCacheStorage *)[cacheStorageMap objectForKey:scope];
-    if (cachesForScope == nil) {
-        cachesForScope = [[ServiceWorkerCacheStorage alloc] init];
-        [cacheStorageMap setObject:cachesForScope forKey:scope];
-    }
-    return cachesForScope;
-}
-
 -(id) init {
     if ((self = [super init]) != nil) {
         caches_ = [[NSMutableDictionary alloc] initWithCapacity:2];
@@ -83,12 +68,12 @@ static NSMutableDictionary *cacheStorageMap;
     return self;
 }
 
--(NSArray*)getCaches
+-(NSArray *)getCaches
 {
     return [self.caches allKeys];
 }
 
--(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName
+-(ServiceWorkerCache *)cacheWithName:(NSString *)cacheName
 {
     return [self.caches objectForKey:cacheName];
 }
@@ -108,6 +93,29 @@ static NSMutableDictionary *cacheStorageMap;
         }
     }
     return response;
+}
+
+@end
+
+@implementation ServiceWorkerCacheApi
+
+static NSMutableDictionary *cacheStorageMap;
+
++(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope
+{
+    if (cacheStorageMap == nil) {
+        cacheStorageMap = [[NSMutableDictionary alloc] initWithCapacity:1];
+    }
+    ServiceWorkerCacheStorage *cachesForScope = (ServiceWorkerCacheStorage *)[cacheStorageMap objectForKey:scope];
+    if (cachesForScope == nil) {
+        cachesForScope = [[ServiceWorkerCacheStorage alloc] init];
+        [cacheStorageMap setObject:cachesForScope forKey:scope];
+    }
+    return cachesForScope;
+}
+
++(void)defineFunctionsInContext:(JSContext *)context {
+    // TODO: Define some functions!
 }
 
 @end

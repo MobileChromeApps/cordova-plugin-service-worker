@@ -17,6 +17,7 @@
  under the License.
  */
 #import <CoreData/CoreData.h>
+#import <JavaScriptCore/JSContext.h>
 
 @interface ServiceWorkerCache : NSManagedObject { }
 
@@ -26,15 +27,24 @@
 -(bool) deleteRequest:(NSURLRequest *)request;
 
 @property (nonatomic, retain) NSMutableDictionary *cache;
+
 @end
 
 @interface ServiceWorkerCacheStorage : NSManagedObject { }
 
-+(ServiceWorkerCacheStorage*)cacheStorageForScope:(NSURL *)scope;
 -(NSArray*)getCaches;
 -(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName;
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
 -(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
 
 @property (nonatomic, retain) NSMutableDictionary *caches;
+
 @end
+
+@interface ServiceWorkerCacheApi : NSObject { }
+
++(void)defineFunctionsInContext:(JSContext *)context;
++(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope;
+
+@end
+
