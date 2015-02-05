@@ -27,7 +27,7 @@ static NSMutableDictionary *cacheStorageMap;
 
 -(id) init {
     if ((self = [super init]) != nil) {
-        caches_ = [[NSMutableDictionary alloc] initWithCapacity:10];
+        cache_ = [[NSMutableDictionary alloc] initWithCapacity:10];
     }
     return self;
 }
@@ -111,3 +111,4 @@ static NSMutableDictionary *cacheStorageMap;
 }
 
 @end
+

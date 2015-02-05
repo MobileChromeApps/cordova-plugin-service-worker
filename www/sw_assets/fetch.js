@@ -57,6 +57,10 @@ Response = function(url, body) {
   this.headerList = { mimeType: "text/html" };
 };
 
+Response.prototype.clone = function() {
+  return new Response(this.url, this.body);
+}
+
 // This function returns a promise with a response for fetching the given resource.
 function fetch(resourceUrl) {
   return new Promise(function(innerResolve, reject) {
