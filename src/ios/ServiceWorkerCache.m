@@ -17,6 +17,7 @@
  under the License.
  */
 
+#import <JavaScriptCore/JavaScriptCore.h>
 #import "ServiceWorkerCache.h"
 #import "ServiceWorkerResponse.h"
 
@@ -116,7 +117,28 @@ static NSMutableDictionary *cacheStorageMap;
 }
 
 +(void)defineFunctionsInContext:(JSContext *)context {
-    // TODO: Define some functions!
+    context[@"match"] = ^(JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+        // Retrieve the caches.
+        NSURL *scope = [NSURL URLWithString:@"/"];
+        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+
+        // Convert the given request into an NSURLRequest.
+        // TODO: Refactor this; it's also used in `handleTrueFetch`.
+        NSDictionary *requestDictionary = [request toDictionary];
+        NSString *urlString = requestDictionary[@"url"];
+        NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+
+        // Check for a match in the cache.
+        // TODO: Deal with multiple matches.
+        ServiceWorkerResponse *cachedResponse = [cacheStorage matchForRequest:urlRequest];
+        if (cachedResponse != nil) {
+            // Convert the response to a dictionary and send it to the promise resolver.
+            NSDictionary *responseDictionary = [cachedResponse toDictionary];
+            [resolve callWithArguments:@[responseDictionary]];
+        } else {
+            [resolve callWithArguments:@[[NSNull null]]];
+        }
+    };
 }
 
 @end
