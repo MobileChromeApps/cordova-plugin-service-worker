@@ -18,27 +18,26 @@
  */
 #import <CoreData/CoreData.h>
 #import <JavaScriptCore/JSContext.h>
+#import "ServiceWorkerResponse.h"
 
 @interface ServiceWorkerCache : NSManagedObject { }
 
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
--(void) putRequest:(NSURLRequest *)request andResponse:(NSURLResponse *)response;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
+-(void) putRequest:(NSURLRequest *)request andResponse:(ServiceWorkerResponse *)response;
 -(bool) deleteRequest:(NSURLRequest *)request;
 
 @property (nonatomic, retain) NSMutableDictionary *cache;
-
 @end
 
 @interface ServiceWorkerCacheStorage : NSManagedObject { }
 
 -(NSArray*)getCaches;
 -(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName;
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request;
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
 
 @property (nonatomic, retain) NSMutableDictionary *caches;
-
 @end
 
 @interface ServiceWorkerCacheApi : NSObject { }

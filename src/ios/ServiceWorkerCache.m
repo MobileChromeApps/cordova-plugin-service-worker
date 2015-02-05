@@ -18,6 +18,7 @@
  */
 
 #import "ServiceWorkerCache.h"
+#import "ServiceWorkerResponse.h"
 
 @implementation ServiceWorkerCache
 
@@ -30,18 +31,18 @@
     return self;
 }
 
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request
 {
     return [self matchForRequest:request withOptions:@{}];
 }
 
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
 {
     // TODO: Implement correct matching algorithm
     return [self.cache objectForKey:request];
 }
 
--(void) putRequest:(NSURLRequest *)request andResponse:(NSURLResponse *)response
+-(void) putRequest:(NSURLRequest *)request andResponse:(ServiceWorkerResponse *)response
 {
     [self.cache setObject:response forKey:request];
 }
@@ -78,14 +79,14 @@
     return [self.caches objectForKey:cacheName];
 }
 
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request
 {
     return [self matchForRequest:request withOptions:@{}];
 }
 
--(NSURLResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
 {
-    NSURLResponse *response = nil;
+    ServiceWorkerResponse *response = nil;
     for (ServiceWorkerCache* cache in self.caches) {
         response = [cache matchForRequest:request withOptions:options];
         if (response != nil) {
