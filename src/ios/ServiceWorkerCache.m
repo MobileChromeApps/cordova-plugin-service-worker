@@ -18,6 +18,7 @@
  */
 
 #import <JavaScriptCore/JavaScriptCore.h>
+#import "FetchConnectionDelegate.h"
 #import "ServiceWorkerCache.h"
 #import "ServiceWorkerResponse.h"
 
@@ -125,6 +126,7 @@ static NSMutableDictionary *cacheStorageMap;
     }
     ServiceWorkerCacheStorage *cachesForScope = (ServiceWorkerCacheStorage *)[cacheStorageMap objectForKey:scope];
     if (cachesForScope == nil) {
+        // TODO: Init this properly, using `initWithEntity:insertIntoManagedObjectContext:`.
         cachesForScope = [[ServiceWorkerCacheStorage alloc] init];
         [cacheStorageMap setObject:cachesForScope forKey:scope];
     }
@@ -169,7 +171,26 @@ static NSMutableDictionary *cacheStorageMap;
 
     // Resolve with nothing.
     context[@"cacheAdd"] = ^(JSValue *cacheName, JSValue *request, JSValue *resolve, JSValue *reject) {
+        // Convert the given request into an NSURLRequest.
+        NSMutableURLRequest *urlRequest;
+        if ([request isString]) {
+            urlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url" : [request toString]}];
+        } else {
+            urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+        }
+        [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:urlRequest];
 
+        // Create a resolve function.
+        void (^innerResolve)(NSDictionary *) = ^(NSDictionary *response){
+            JSValue *responseValue = [JSValue valueWithObject:response inContext:context];
+            [context[@"cachePut"] callWithArguments:@[cacheName, request, responseValue, resolve, reject]];
+        };
+
+        // Create a connection and send the request.
+        FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
+        delegate.resolve = innerResolve;
+        delegate.reject = reject;
+        [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
     };
 
     // Resolve with nothing.
@@ -260,11 +281,16 @@ static NSMutableDictionary *cacheStorageMap;
     };
 }
 
-+ (NSURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
++ (NSMutableURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
 {
     NSDictionary *requestDictionary = [jsRequest toDictionary];
+    return [ServiceWorkerCacheApi nativeRequestFromDictionary:requestDictionary];
+}
+
++ (NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
+{
     NSString *urlString = requestDictionary[@"url"];
-    return [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+    return [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
 }
 
 @end
