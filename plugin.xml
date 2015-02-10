@@ -27,6 +27,7 @@
     <asset src="www/sw_assets/client.js" target="sw_assets/client.js" />
     <asset src="www/sw_assets/event.js" target="sw_assets/event.js" />
     <asset src="www/sw_assets/fetch.js" target="sw_assets/fetch.js" />
+    <asset src="www/sw_assets/cache.js" target="sw_assets/cache.js" />
     <asset src="www/sw_assets/kamino.js" target="sw_assets/kamino.js" />
     <asset src="www/sw_assets/message.js" target="sw_assets/message.js" />
 
