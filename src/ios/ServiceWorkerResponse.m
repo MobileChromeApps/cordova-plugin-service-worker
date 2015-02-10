@@ -17,12 +17,28 @@
  under the License.
  */
 
+#import <JavaScriptCore/JavaScriptCore.h>
 #import "ServiceWorkerResponse.h"
 
 @implementation ServiceWorkerResponse
 
 @synthesize url = _url;
 @synthesize body = _body;
+
+- (id) initWithUrl:(NSString *)url Body:(NSString *)body {
+    if (self = [super init]) {
+        _url = url;
+        _body = body;
+    }
+    return self;
+}
+
++ (ServiceWorkerResponse *)responseFromJSValue:(JSValue *)jvalue
+{
+    NSString *url = [jvalue[@"url"] toString];
+    NSString *body = [jvalue[@"body"] toString];
+    return [[ServiceWorkerResponse alloc] initWithUrl:url Body:body];
+}
 
 - (NSDictionary *)toDictionary {
     return [NSDictionary dictionaryWithObjects:@[self.url, self.body] forKeys:@[@"url", @"body"]];

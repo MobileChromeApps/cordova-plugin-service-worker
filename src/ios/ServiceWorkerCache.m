@@ -77,7 +77,12 @@
 
 -(ServiceWorkerCache *)cacheWithName:(NSString *)cacheName
 {
-    return [self.caches objectForKey:cacheName];
+    ServiceWorkerCache *cache = [self.caches objectForKey:cacheName];
+    if (cache == nil) {
+        cache = [[ServiceWorkerCache alloc] init];
+        [self.caches setObject:cache forKey:cacheName];
+    }
+    return cache;
 }
 
 -(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request
@@ -139,6 +144,30 @@ static NSMutableDictionary *cacheStorageMap;
             [resolve callWithArguments:@[[NSNull null]]];
         }
     };
+
+    context[@"put"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
+        // Retrieve the caches.
+        NSURL *scope = [NSURL URLWithString:@"/"];
+        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+
+        // Get or create the specified cache
+        ServiceWorkerCache *cache = [cacheStorage cacheWithName:[cacheName toString]];
+
+        // Convert the given request into an NSURLRequest.
+        // TODO: Refactor this; it's also used in `handleTrueFetch`.
+        NSDictionary *requestDictionary = [request toDictionary];
+        NSString *urlString = requestDictionary[@"url"];
+        NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+
+        // Convert the response into a ServiceWorkerResponse.
+        // TODO: Factor this out.
+        ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromJSValue:response];
+
+        [cache putRequest:urlRequest andResponse:serviceWorkerResponse];
+        // Umm... return a something?
+        [resolve callWithArguments:@[[NSNull null]]];
+    };
+
 }
 
 @end

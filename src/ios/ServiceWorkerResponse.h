@@ -17,11 +17,14 @@
  under the License.
  */
 
+#import <JavaScriptCore/JSContext.h>
+
 @interface ServiceWorkerResponse : NSObject
 
 @property (nonatomic, strong) NSString *url;
 @property (nonatomic, strong) NSString *body;
 
++ (ServiceWorkerResponse *)responseFromJSValue:(JSValue *)value;
 - (NSDictionary *)toDictionary;
 
 @end
