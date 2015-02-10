@@ -128,10 +128,7 @@ static NSMutableDictionary *cacheStorageMap;
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
 
         // Convert the given request into an NSURLRequest.
-        // TODO: Refactor this; it's also used in `handleTrueFetch`.
-        NSDictionary *requestDictionary = [request toDictionary];
-        NSString *urlString = requestDictionary[@"url"];
-        NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+        NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
 
         // Check for a match in the cache.
         // TODO: Deal with multiple matches.
@@ -154,10 +151,7 @@ static NSMutableDictionary *cacheStorageMap;
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:[cacheName toString]];
 
         // Convert the given request into an NSURLRequest.
-        // TODO: Refactor this; it's also used in `handleTrueFetch`.
-        NSDictionary *requestDictionary = [request toDictionary];
-        NSString *urlString = requestDictionary[@"url"];
-        NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+        NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
 
         // Convert the response into a ServiceWorkerResponse.
         // TODO: Factor this out.
@@ -167,7 +161,12 @@ static NSMutableDictionary *cacheStorageMap;
         // Umm... return a something?
         [resolve callWithArguments:@[[NSNull null]]];
     };
+}
 
++ (NSURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest {
+    NSDictionary *requestDictionary = [jsRequest toDictionary];
+    NSString *urlString = requestDictionary[@"url"];
+    return [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]];
 }
 
 @end
