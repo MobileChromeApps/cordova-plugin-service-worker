@@ -122,7 +122,7 @@ static NSMutableDictionary *cacheStorageMap;
 }
 
 +(void)defineFunctionsInContext:(JSContext *)context {
-    context[@"match"] = ^(JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+    context[@"cacheMatch"] = ^(JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
@@ -142,7 +142,7 @@ static NSMutableDictionary *cacheStorageMap;
         }
     };
 
-    context[@"put"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
+    context[@"cachePut"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
