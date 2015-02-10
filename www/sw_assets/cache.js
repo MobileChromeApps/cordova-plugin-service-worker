@@ -74,16 +74,18 @@ CacheStorage.prototype.match = function(request, options) {
 };
 
 CacheStorage.prototype.has = function(cacheName) {
+  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
     // Check if the cache name is in the list.
-    resolve(this.cacheNameList.indexOf(cacheName) >= 0);
+    resolve(cacheNameList.indexOf(cacheName) >= 0);
   });
 };
 
 CacheStorage.prototype.open = function(cacheName) {
+  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
     // Add to the list of cache names.
-    this.cacheNameList.push(cacheName);
+    cacheNameList.push(cacheName);
 
     // Create the cache in native and resolve the promise with a JS cache when done.
     openCache(cacheName, function() {
@@ -94,12 +96,13 @@ CacheStorage.prototype.open = function(cacheName) {
 
 // This function returns a promise for a response.
 CacheStorage.prototype.delete = function(cacheName) {
+  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
     // Remove from the list of cache names.
     // Also, delete the cache in native and resolve the promise accordingly.
-    var index = this.cacheNameList.indexOf(cacheName);
+    var index = cacheNameList.indexOf(cacheName);
     if (index >= 0) {
-      this.cacheNameList.splice(index, 1);
+      cacheNameList.splice(index, 1);
       deleteCache(cacheName, function() {
         resolve(true);
       });
@@ -111,9 +114,10 @@ CacheStorage.prototype.delete = function(cacheName) {
 
 // This function returns a promise for a response.
 CacheStorage.prototype.keys = function() {
+  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
     // Resolve the promise with the cache name list.
-    resolve(this.cacheNameList);
+    resolve(cacheNameList);
   });
 };
 
