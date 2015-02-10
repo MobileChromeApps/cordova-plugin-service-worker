@@ -44,10 +44,12 @@
         <source-file src="src/ios/FetchConnectionDelegate.m" />
         <header-file src="src/ios/FetchInterceptorProtocol.h" />
         <source-file src="src/ios/FetchInterceptorProtocol.m" />
-        <header-file src="src/ios/ServiceWorkerRequest.h" />
-        <source-file src="src/ios/ServiceWorkerRequest.m" />
         <header-file src="src/ios/ServiceWorkerCache.h" />
         <source-file src="src/ios/ServiceWorkerCache.m" />
+        <header-file src="src/ios/ServiceWorkerRequest.h" />
+        <source-file src="src/ios/ServiceWorkerRequest.m" />
+        <header-file src="src/ios/ServiceWorkerResponse.h" />
+        <source-file src="src/ios/ServiceWorkerResponse.m" />
         <framework src="JavaScriptCore.framework" />
         <framework src="CoreData.framework" />
     </platform>
