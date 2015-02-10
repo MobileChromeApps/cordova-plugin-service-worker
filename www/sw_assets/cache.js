@@ -1,5 +1,5 @@
 CacheStorage = function() {
-
+    return this;
 };
 
 // This function returns a promise for a response.

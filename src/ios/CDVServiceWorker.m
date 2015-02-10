@@ -23,6 +23,7 @@
 #import "CDVServiceWorker.h"
 #import "FetchConnectionDelegate.h"
 #import "FetchInterceptorProtocol.h"
+#import "ServiceWorkerCache.h"
 #import "ServiceWorkerRequest.h"
 
 static bool isServiceWorkerActive = NO;
@@ -260,6 +261,9 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
         [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
+
+    // Install cache API JS methods
+    [ServiceWorkerCacheApi defineFunctionsInContext:self.context];
 
     // Load the required assets.
     [self loadServiceWorkerAssetsIntoContext];
