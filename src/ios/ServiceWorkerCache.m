@@ -146,7 +146,13 @@ static NSMutableDictionary *cacheStorageMap;
 
         // Check for a match in the cache.
         // TODO: Deal with multiple matches.
-        ServiceWorkerResponse *cachedResponse = [cacheStorage matchForRequest:urlRequest];
+        ServiceWorkerResponse *cachedResponse;
+        if (cacheName == nil) {
+            cachedResponse = [cacheStorage matchForRequest:urlRequest];
+        } else {
+            cachedResponse = [[cacheStorage cacheWithName:[cacheName toString]] matchForRequest:urlRequest];
+        }
+
         if (cachedResponse != nil) {
             // Convert the response to a dictionary and send it to the promise resolver.
             NSDictionary *responseDictionary = [cachedResponse toDictionary];
