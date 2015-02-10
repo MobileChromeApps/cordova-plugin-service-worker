@@ -122,7 +122,10 @@ static NSMutableDictionary *cacheStorageMap;
 }
 
 +(void)defineFunctionsInContext:(JSContext *)context {
-    context[@"cacheMatch"] = ^(JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+    // Cache functions.
+
+    // Resolve with a response.
+    context[@"cacheMatch"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
@@ -142,6 +145,22 @@ static NSMutableDictionary *cacheStorageMap;
         }
     };
 
+    // Resolve with a list of responses.
+    context[@"cacheMatchAll"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+
+    };
+
+    // Resolve with nothing.
+    context[@"cacheAdd"] = ^(JSValue *cacheName, JSValue *request, JSValue *resolve, JSValue *reject) {
+
+    };
+
+    // Resolve with nothing.
+    context[@"cacheAddAll"] = ^(JSValue *cacheName, JSValue *requests, JSValue *resolve, JSValue *reject) {
+
+    };
+
+    // Resolve with nothing.
     context[@"cachePut"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
@@ -160,6 +179,29 @@ static NSMutableDictionary *cacheStorageMap;
         [cache putRequest:urlRequest andResponse:serviceWorkerResponse];
         // Umm... return a something?
         [resolve callWithArguments:@[[NSNull null]]];
+    };
+
+    // Resolve with a boolean.
+    context[@"cacheDelete"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+
+    };
+
+    // Resolve with a list of requests.
+    context[@"cacheKeys"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
+
+    };
+
+
+    // CacheStorage functions.
+
+    // Resolve with nothing.
+    context[@"openCache"] = ^(JSValue *cacheName, JSValue *resolve) {
+
+    };
+
+    // Resolve with nothing.
+    context[@"deleteCache"] = ^(JSValue *cacheName, JSValue *resolve) {
+
     };
 }
 
