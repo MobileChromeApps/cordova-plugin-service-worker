@@ -75,7 +75,7 @@ CacheStorage = function() {
 CacheStorage.prototype.match = function(request, options) {
   return new Promise(function(resolve, reject) {
     // Call the native match function.
-    cacheMatch(options.cacheName, request, options, resolve, reject);
+    cacheMatch(options && options.cacheName, request, options, resolve, reject);
   });
 };
 
