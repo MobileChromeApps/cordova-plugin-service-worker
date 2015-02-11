@@ -180,15 +180,9 @@ static NSMutableDictionary *cacheStorageMap;
         }
         [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:urlRequest];
 
-        // Create a resolve function.
-        void (^innerResolve)(NSDictionary *) = ^(NSDictionary *response){
-            JSValue *responseValue = [JSValue valueWithObject:response inContext:context];
-            [context[@"cachePut"] callWithArguments:@[cacheName, request, responseValue, resolve, reject]];
-        };
-
         // Create a connection and send the request.
         FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
-        delegate.resolve = innerResolve;
+        delegate.resolve = resolve;
         delegate.reject = reject;
         [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
     };
@@ -208,7 +202,12 @@ static NSMutableDictionary *cacheStorageMap;
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:[cacheName toString]];
 
         // Convert the given request into an NSURLRequest.
-        NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+        NSMutableURLRequest *urlRequest;
+        if ([request isString]) {
+            urlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url" : [request toString]}];
+        } else {
+            urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+        }
 
         // Convert the response into a ServiceWorkerResponse.
         // TODO: Factor this out.

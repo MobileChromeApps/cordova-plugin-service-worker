@@ -4,7 +4,7 @@ Cache = function(cacheName) {
 };
 
 Cache.prototype.match = function(request, options) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native match function.
     cacheMatch(cacheName, request, options, resolve, reject);
@@ -12,7 +12,7 @@ Cache.prototype.match = function(request, options) {
 };
 
 Cache.prototype.matchAll = function(request, options) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native matchAll function.
     cacheMatchAll(cacheName, request, options, resolve, reject);
@@ -20,15 +20,21 @@ Cache.prototype.matchAll = function(request, options) {
 };
 
 Cache.prototype.add = function(request) {
-  var cacheName = this.cacheName;
+  var cache = this;
   return new Promise(function(resolve, reject) {
+    // This resolve function takes a response and calls `put` with it (and the request).
+    // Then it calls the given resolve function.
+    var innerResolve = function(response) {
+        cache.put(request, response).then(resolve, reject);
+    }
+
     // Call the native add function.
-    cacheAdd(cacheName, request, resolve, reject);
+    cacheAdd(cache.name, request, innerResolve, reject);
   });
 };
 
 Cache.prototype.addAll = function(requests) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native addAll function.
     cacheAddAll(cacheName, requests, resolve, reject);
@@ -36,7 +42,7 @@ Cache.prototype.addAll = function(requests) {
 };
 
 Cache.prototype.put = function(request, response) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native put function.
     cachePut(cacheName, request, response, resolve, reject);
@@ -44,7 +50,7 @@ Cache.prototype.put = function(request, response) {
 };
 
 Cache.prototype.delete = function(request, options) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native delete function.
     cacheDelete(cacheName, request, options, resolve, reject);
@@ -52,7 +58,7 @@ Cache.prototype.delete = function(request, options) {
 };
 
 Cache.prototype.keys = function(request, options) {
-  var cacheName = this.cacheName;
+  var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native keys function.
     cacheKeys(cacheName, request, options, resolve, reject);
