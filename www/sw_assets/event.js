@@ -3,7 +3,7 @@ var self=this;
 
 Event = function(type) {
   this.type = type;
-  this.cancelable= true;
+  this.cancelable = true;
 
   this.stopPropagation_ = false;
   this.stopImmediatePropagation_ = false;
@@ -22,6 +22,7 @@ Event.prototype.preventDefault = function() {
 ExtendableEvent = function(type) {
   Event.call(this, type);
   this.promises = null;
+  return this;
 };
 
 ExtendableEvent.prototype = new Event();
@@ -113,12 +114,12 @@ Object.defineProperty(this, 'onfetch', {
 
 InstallEvent = function() {
   this.activeWorker = null;
-  return self;
+  return this;
 };
 InstallEvent.prototype = new ExtendableEvent('install');
 
 ActivateEvent = function() {
-  return self;
+  return this;
 };
 ActivateEvent.prototype = new ExtendableEvent('activate');
 
@@ -142,3 +143,4 @@ FireActivateEvent = function() {
     return Promise.resolve();
   }
 };
+
