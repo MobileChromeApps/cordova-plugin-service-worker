@@ -25,7 +25,7 @@ Cache.prototype.add = function(request) {
     // This resolve function takes a response and calls `put` with it (and the request).
     // Then it calls the given resolve function.
     var innerResolve = function(response) {
-        cache.put(request, response).then(resolve, reject);
+      cache.put(request, response).then(resolve, reject);
     }
 
     // Call the native add function.
@@ -34,11 +34,14 @@ Cache.prototype.add = function(request) {
 };
 
 Cache.prototype.addAll = function(requests) {
-  var cacheName = this.name;
-  return new Promise(function(resolve, reject) {
-    // Call the native addAll function.
-    cacheAddAll(cacheName, requests, resolve, reject);
-  });
+  // Create a list of `add` promises, one for each request.
+  var promiseList = [];
+  for (var i=0; i<requests.length; i++) {
+    promiseList.push(this.add(requests[i]));
+  }
+
+  // Return a promise for all of the `add` promises.
+  return Promise.all(promiseList);
 };
 
 Cache.prototype.put = function(request, response) {

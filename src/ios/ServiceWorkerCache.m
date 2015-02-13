@@ -188,11 +188,6 @@ static NSMutableDictionary *cacheStorageMap;
     };
 
     // Resolve with nothing.
-    context[@"cacheAddAll"] = ^(JSValue *cacheName, JSValue *requests, JSValue *resolve, JSValue *reject) {
-
-    };
-
-    // Resolve with nothing.
     context[@"cachePut"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
