@@ -27,6 +27,7 @@
     <asset src="www/sw_assets/client.js" target="sw_assets/client.js" />
     <asset src="www/sw_assets/event.js" target="sw_assets/event.js" />
     <asset src="www/sw_assets/fetch.js" target="sw_assets/fetch.js" />
+    <asset src="www/sw_assets/cache.js" target="sw_assets/cache.js" />
     <asset src="www/sw_assets/kamino.js" target="sw_assets/kamino.js" />
     <asset src="www/sw_assets/message.js" target="sw_assets/message.js" />
 
@@ -39,7 +40,19 @@
         </config-file>
         <header-file src="src/ios/CDVServiceWorker.h" />
         <source-file src="src/ios/CDVServiceWorker.m" />
+        <header-file src="src/ios/FetchConnectionDelegate.h" />
+        <source-file src="src/ios/FetchConnectionDelegate.m" />
+        <header-file src="src/ios/FetchInterceptorProtocol.h" />
+        <source-file src="src/ios/FetchInterceptorProtocol.m" />
+        <header-file src="src/ios/ServiceWorkerCache.h" />
+        <source-file src="src/ios/ServiceWorkerCache.m" />
+        <header-file src="src/ios/ServiceWorkerRequest.h" />
+        <source-file src="src/ios/ServiceWorkerRequest.m" />
+        <header-file src="src/ios/ServiceWorkerResponse.h" />
+        <source-file src="src/ios/ServiceWorkerResponse.m" />
+        <other-file src="src/ios/ServiceWorkerCache.xcdatamodel/contents" target-dir="ServiceWorkerCache.xcdatamodeld/ServiceWorkerCache.xcdatamodel" />
         <framework src="JavaScriptCore.framework" />
+        <framework src="CoreData.framework" />
     </platform>
 
 </plugin>

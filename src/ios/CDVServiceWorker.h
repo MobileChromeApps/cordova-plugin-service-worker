@@ -18,6 +18,7 @@
  */
 
 #import <Cordova/CDVPlugin.h>
+#import <JavaScriptCore/JSContext.h>
 
 extern NSString * const SERVICE_WORKER;
 extern NSString * const SERVICE_WORKER_ACTIVATED;
@@ -34,14 +35,17 @@ extern NSString * const REGISTRATION_KEY_WAITING;
 
 extern NSString * const SERVICE_WORKER_KEY_SCRIPT_URL;
 
-@interface CDVServiceWorker : CDVPlugin {}
+@interface CDVServiceWorker : CDVPlugin <UIWebViewDelegate> {}
 
 + (CDVServiceWorker *)instanceForRequest:(NSURLRequest *)request;
-- (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol;
+- (void)addRequestToQueue:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol;
 
 @property (nonatomic, retain) JSContext *context;
+@property (nonatomic, retain) UIWebView *workerWebView;
 @property (nonatomic, retain) NSMutableDictionary *requestDelegates;
+@property (nonatomic, retain) NSMutableArray *requestQueue;
 @property (nonatomic, retain) NSDictionary *registration;
+@property (nonatomic, retain) NSString *serviceWorkerScriptFilename;
 
 @end
 

@@ -3,7 +3,7 @@ var self=this;
 
 Event = function(type) {
   this.type = type;
-  this.cancelable= true;
+  this.cancelable = true;
 
   this.stopPropagation_ = false;
   this.stopImmediatePropagation_ = false;
@@ -22,6 +22,7 @@ Event.prototype.preventDefault = function() {
 ExtendableEvent = function(type) {
   Event.call(this, type);
   this.promises = null;
+  return this;
 };
 
 ExtendableEvent.prototype = new Event();
@@ -109,3 +110,37 @@ Object.defineProperty(this, 'onfetch', {
   get: eventGetter('fetch'),
   set: eventSetter('fetch')
 });
+
+
+InstallEvent = function() {
+  this.activeWorker = null;
+  return this;
+};
+InstallEvent.prototype = new ExtendableEvent('install');
+
+ActivateEvent = function() {
+  return this;
+};
+ActivateEvent.prototype = new ExtendableEvent('activate');
+
+FireInstallEvent = function() {
+  var ev = new InstallEvent();
+  var InstallFailed;
+  dispatchEvent(ev);
+  if (ev.promises instanceof Array) {
+    return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
+  } else {
+    return Promise.resolve();
+  }
+};
+
+FireActivateEvent = function() {
+  var ev = new ActivateEvent();
+  dispatchEvent(ev);
+  if (ev.promises instanceof Array) {
+    return Promise.all(ev.promises);
+  } else {
+    return Promise.resolve();
+  }
+};
+

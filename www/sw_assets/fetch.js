@@ -17,24 +17,61 @@ FetchEvent = function(eventInitDict) {
 };
 FetchEvent.prototype = new Event();
 
-FetchEvent.prototype.sendResponse = function(url, body) {
-    handleFetchResponse(this.__requestId, {
-        url:url,
-        status:200,
-        status_message:'OK',
-        header_list: {
-            mime_type:'text/html'
-        },
-        type:'default',
-        body:body
-    });
-};
+FetchEvent.prototype.respondWith = function(response) {
+  // Prevent the default handler from running, so that it doesn't override this response.
+  this.preventDefault();
 
-FetchEvent.prototype.respondWith = function(response) {};
+  // Store the id locally, for use in the `convertAndHandle` function.
+  var requestId = this.__requestId;
+
+  // Convert the response body to an array buffer and send the response to native.
+  var convertAndHandle = function(response) {
+    response.body = window.btoa(response.body);
+    handleFetchResponse(requestId, response);
+  }
+
+  // TODO: Find a better way to determine whether `response` is a promise.
+  if (response.then) {
+    // `response` is a promise!
+    response.then(convertAndHandle);
+  } else {
+    convertAndHandle(response);
+  }
+};
 
 FetchEvent.prototype.forwardTo = function(url) {};
 
 FetchEvent.prototype.default = function(ev) {
-  console.log("In fetch.default");
   handleFetchDefault(ev.__requestId, {url:ev.request.url});
 };
+
+// These objects are *incredibly* simplified right now.
+Request = function(url) {
+  this.url = url;
+};
+
+Response = function(url, body) {
+  this.url = url;
+  this.body = body;
+  this.status = 200;
+  this.headerList = { mimeType: "text/html" };
+};
+
+Response.prototype.clone = function() {
+  return new Response(this.url, this.body);
+}
+
+// This function returns a promise with a response for fetching the given resource.
+function fetch(resourceUrl) {
+  return new Promise(function(innerResolve, reject) {
+    // Wrap the resolve callback so we can decode the response body.
+    var resolve = function(response) {
+        response.body = window.atob(response.body);
+        innerResolve(response);
+    }
+
+    // Call a native function to fetch the resource.
+    handleTrueFetch(resourceUrl, resolve, reject);
+  });
+}
+
