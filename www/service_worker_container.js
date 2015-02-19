@@ -11,19 +11,15 @@ var ServiceWorkerContainer = {
 	}
 	exec(innerResolve, null, "ServiceWorker", "serviceWorkerReady", []);
     }),
-
     register: function(scriptURL, options) {
         console.log("Registering " + scriptURL);
         return new Promise(function(resolve, reject) {
             var innerResolve = function(result) {
-               var serviceWorkerRegistration = new ServiceWorkerRegistration(result.installing, result.waiting, new ServiceWorker(), result.registeringScriptUrl, result.scope); 
-               resolve(serviceWorkerRegistration);		
+               resolve(new ServiceWorkerRegistration(result.installing, result.waiting, new ServiceWorker(), result.registeringScriptUrl, result.scope));		
             }
-            
             exec(innerResolve, reject, "ServiceWorker", "register", [scriptURL, options]);
         });
     }
 };
 
 module.exports = ServiceWorkerContainer;
-

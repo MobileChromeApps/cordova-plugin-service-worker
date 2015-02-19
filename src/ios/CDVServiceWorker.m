@@ -153,26 +153,16 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
             [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
         }
     } else {
-        [self createServiceWorkerRegistration:scriptUrl :scopeUrl];
-        /*NSDictionary *serviceWorker = [NSDictionary dictionaryWithObject:scriptUrl forKey:SERVICE_WORKER_KEY_SCRIPT_URL];
-        // TODO: Add a state to the ServiceWorker object.
-
-        NSArray *registrationKeys = @[REGISTRATION_KEY_INSTALLING,
-                                      REGISTRATION_KEY_WAITING,
-                                      REGISTRATION_KEY_ACTIVE,
-                                      REGISTRATION_KEY_REGISTERING_SCRIPT_URL,
-                                      REGISTRATION_KEY_SCOPE];
-        NSArray *registrationObjects = @[[NSNull null], [NSNull null], serviceWorker, scriptUrl, scopeUrl];
-        self.registration = [NSDictionary dictionaryWithObjects:registrationObjects forKeys:registrationKeys];*/
+        [self createServiceWorkerRegistrationWithScriptUrl:scriptUrl scopeUrl:scopeUrl];
     }
-
+    
     // Return the registration.
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self.registration];
     [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
 }
 
-- (void)createServiceWorkerRegistration:(NSString*)scriptUrl :(NSString*)scopeUrl{
-    
+- (void)createServiceWorkerRegistrationWithScriptUrl:(NSString*)scriptUrl scopeUrl:(NSString*)scopeUrl
+{
     NSDictionary *serviceWorker = [NSDictionary dictionaryWithObject:scriptUrl forKey:SERVICE_WORKER_KEY_SCRIPT_URL];
     // TODO: Add a state to the ServiceWorker object.
     
@@ -183,7 +173,6 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
                                   REGISTRATION_KEY_SCOPE];
     NSArray *registrationObjects = @[[NSNull null], [NSNull null], serviceWorker, scriptUrl, scopeUrl];
     self.registration = [NSDictionary dictionaryWithObjects:registrationObjects forKeys:registrationKeys];
-    
 }
 
 - (void)serviceWorkerReady:(CDVInvokedUrlCommand*)command
@@ -191,19 +180,18 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // The provided scope is ignored; we always set it to the root.
     // TODO: Support provided scopes.
     NSString *scopeUrl = @"/";
-    
     NSString *scriptUrl = self.serviceWorkerScriptFilename;
     
-    if(isServiceWorkerActive){
-        if(self.registration == nil){
-            [self createServiceWorkerRegistration:scriptUrl :scopeUrl];
+    if (isServiceWorkerActive) {
+        if (self.registration == nil) {
+            [self createServiceWorkerRegistrationWithScriptUrl:scriptUrl scopeUrl:scopeUrl];
         }
         // Return the registration.
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:self.registration];
         [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
     } else {
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                          messageAsString:@"There is no Service Worker registration on record."];
+                                                          messageAsString:@"No Service Worker is currently active."];
         [[self commandDelegate] sendPluginResult:pluginResult callbackId:[command callbackId]];
     }
 }
