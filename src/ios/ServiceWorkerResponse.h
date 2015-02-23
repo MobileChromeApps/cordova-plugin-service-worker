@@ -23,8 +23,10 @@
 
 @property (nonatomic, strong) NSString *url;
 @property (nonatomic, strong) NSString *body;
+@property (nonatomic, strong) NSNumber *status;
 
 + (ServiceWorkerResponse *)responseFromJSValue:(JSValue *)value;
 - (NSDictionary *)toDictionary;
 
 @end
+

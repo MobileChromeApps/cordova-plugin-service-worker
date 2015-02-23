@@ -49,6 +49,7 @@
     ServiceWorkerResponse *response = [ServiceWorkerResponse new];
     response.url = @"url";
     response.body = encodedBody;
+    response.status = @200;
 
     // Convert the response to a dictionary and send it to the promise resolver.
     NSDictionary *responseDictionary = [response toDictionary];

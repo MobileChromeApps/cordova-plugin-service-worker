@@ -24,11 +24,13 @@
 
 @synthesize url = _url;
 @synthesize body = _body;
+@synthesize status = _status;
 
-- (id) initWithUrl:(NSString *)url Body:(NSString *)body {
+- (id) initWithUrl:(NSString *)url body:(NSString *)body status:(NSNumber *)status {
     if (self = [super init]) {
         _url = url;
         _body = body;
+        _status = status;
     }
     return self;
 }
@@ -37,11 +39,13 @@
 {
     NSString *url = [jvalue[@"url"] toString];
     NSString *body = [jvalue[@"body"] toString];
-    return [[ServiceWorkerResponse alloc] initWithUrl:url Body:body];
+    NSNumber *status = [jvalue[@"status"] toNumber];
+    return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status];
 }
 
 - (NSDictionary *)toDictionary {
-    return [NSDictionary dictionaryWithObjects:@[self.url, self.body] forKeys:@[@"url", @"body"]];
+    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status] forKeys:@[@"url", @"body", @"status"]];
 }
 
 @end
+
