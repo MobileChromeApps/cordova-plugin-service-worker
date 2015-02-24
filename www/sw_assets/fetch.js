@@ -66,7 +66,15 @@ Response.prototype.clone = function() {
 }
 
 // This function returns a promise with a response for fetching the given resource.
-function fetch(resourceUrl) {
+function fetch(input) {
+  // Assume the passed in input is a resource URL string.
+  var resourceUrl = input;
+
+  // If it's actually an object, get the url string from it.
+  if (typeof input === 'object') {
+    resourceUrl = input.url;
+  }
+
   return new Promise(function(innerResolve, reject) {
     // Wrap the resolve callback so we can decode the response body.
     var resolve = function(response) {
