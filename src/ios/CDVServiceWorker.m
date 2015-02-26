@@ -21,93 +21,11 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <CommonCrypto/CommonDigest.h>
 #import "CDVServiceWorker.h"
+#import "FetchConnectionDelegate.h"
+#import "FetchInterceptorProtocol.h"
+#import "ServiceWorkerRequest.h"
 
-#include <libkern/OSAtomic.h>
-
-@interface FetchInterceptorProtocol : NSURLProtocol {}
-+ (BOOL)canInitWithRequest:(NSURLRequest *)request;
-- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data;
-@property (nonatomic, retain) NSURLConnection *connection;
-@end
-
-@implementation FetchInterceptorProtocol
-@synthesize connection=_connection;
-
-static int64_t requestCount = 0;
-
-+ (BOOL)canInitWithRequest:(NSURLRequest *)request {
-    // Check - is there a service worker for this request?
-    // For now, assume YES -- all requests go through service worker. This may be incorrect if there are iframes present.
-    if ([NSURLProtocol propertyForKey:@"PassThrough" inRequest:request]) {
-        // Already seen; not handling
-        return NO;
-    } else {
-        if ([CDVServiceWorker instanceForRequest:request]) {
-            // Handling
-            return YES;
-        } else {
-            // No Service Worker installed; not handling
-            return NO;
-        }
-    }
-}
-
-+ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request {
-    return request;
-}
-
-+ (BOOL)requestIsCacheEquivalent:(NSURLRequest *)a toRequest:(NSURLRequest *)b {
-    return [super requestIsCacheEquivalent:a toRequest:b];
-}
-
-- (void)startLoading {
-    // Attach a reference to the Service Worker to a copy of the request
-    NSMutableURLRequest *workerRequest = [self.request mutableCopy];
-    CDVServiceWorker *instanceForRequest = [CDVServiceWorker instanceForRequest:workerRequest];
-    [NSURLProtocol setProperty:instanceForRequest forKey:@"ServiceWorkerPlugin" inRequest:workerRequest];
-    NSNumber *requestId = [NSNumber numberWithLongLong:OSAtomicIncrement64(&requestCount)];
-    [NSURLProtocol setProperty:requestId forKey:@"RequestId" inRequest:workerRequest];
-
-    [instanceForRequest fetchResponseForRequest:workerRequest withId:requestId delegateTo:self];
-}
-
-- (void)stopLoading {
-    [self.connection cancel];
-    self.connection = nil;
-}
-
-- (void)passThrough {
-    // Flag this request as a pass-through so that the URLProtocol doesn't try to grab it again
-    NSMutableURLRequest *taggedRequest = [self.request mutableCopy];
-    [NSURLProtocol setProperty:@YES forKey:@"PassThrough" inRequest:taggedRequest];
-
-    // Initiate a new request to actually retrieve the resource
-    self.connection = [NSURLConnection connectionWithRequest:taggedRequest delegate:self];
-}
-
-- (void)handleAResponse:(NSURLResponse *)response withSomeData:(NSData *)data {
-    // TODO: Move cache storage policy into args
-    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-    [self.client URLProtocol:self didLoadData:data];
-    [self.client URLProtocolDidFinishLoading:self];
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    [self.client URLProtocol:self didLoadData:data];
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    [self.client URLProtocolDidFinishLoading:self];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-    [self.client URLProtocol:self didFailWithError:error];
-}
-@end
+static bool isServiceWorkerActive = NO;
 
 NSString * const SERVICE_WORKER = @"service_worker";
 NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
@@ -127,8 +45,11 @@ NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
 @implementation CDVServiceWorker
 
 @synthesize context = _context;
+@synthesize workerWebView = _workerWebView;
 @synthesize registration = _registration;
 @synthesize requestDelegates = _requestDelegates;
+@synthesize requestQueue = _requestQueue;
+@synthesize serviceWorkerScriptFilename = _serviceWorkerScriptFilename;
 
 - (NSString *)hashForString:(NSString *)string
 {
@@ -181,51 +102,20 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // TODO: Make this better; probably a registry
     singletonInstance = self;
 
-    _requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
+    self.requestDelegates = [[NSMutableDictionary alloc] initWithCapacity:10];
+    self.requestQueue = [NSMutableArray new];
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
 
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
-    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
-    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+    self.workerWebView = [[UIWebView alloc] init]; // Headless
+    [self.viewController.view addSubview:self.workerWebView];
+    [self.workerWebView setDelegate:self];
+    [self.workerWebView loadHTMLString:@"<html><title>Service Worker Page</title></html>" baseURL:[NSURL fileURLWithPath:[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"GeneratedWorker.html" ] ]];
 
-    NSString *serviceWorkerScriptFilename = nil;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
-        serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
-    }
-    if (serviceWorkerScriptFilename != nil) {
-        NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", serviceWorkerScriptFilename];
-        NSLog(@"ServiceWorker relative path: %@", serviceWorkerScriptRelativePath);
-        NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
-        if (serviceWorkerScript != nil) {
-            if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
-                serviceWorkerInstalled = NO;
-                serviceWorkerActivated = NO;
-                [defaults setBool:NO forKey:SERVICE_WORKER_INSTALLED];
-                [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
-                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
-            }
-            [self createServiceWorkerFromScript:serviceWorkerScript];
-            [self createServiceWorkerClientWithUrl:serviceWorkerScriptFilename];
-            if (!serviceWorkerInstalled) {
-                [self installServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerInstalled = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
-            }
-            // TODO: Don't do this immediately. Wait for installation to complete
-            if (!serviceWorkerActivated) {
-                [self activateServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerActivated = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
-            }
-        }
-    } else {
-        NSLog(@"No service worker script defined");
+        self.serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
     }
 }
 
@@ -282,44 +172,56 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)postMessage:(CDVInvokedUrlCommand*)command
 {
     NSString *message = [command argumentAtIndex:0];
-    NSDictionary *targetOrigin = [command argumentAtIndex:1];
 
     // Fire a message event in the JSContext.
     NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new MessageEvent({data:Kamino.parse('%@')}));", message];
-    [self.context evaluateScript:dispatchCode];
+    [self evaluateScript:dispatchCode];
 }
 
 - (void)installServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('install'));"];
+    [self evaluateScript:@"FireInstallEvent().then(function() { console.log('Service Worker Installed');});"];
 }
 
 - (void)activateServiceWorker
 {
-    [self.context evaluateScript:@"dispatchEvent(new ExtendableEvent('activate'));"];
+    [self evaluateScript:@"FireActivateEvent().then(function() { console.log('Service Worker Activated');});"];
 }
 
 # pragma mark Helper Functions
 
+- (void)evaluateScript:(NSString *)script
+{
+    [self.workerWebView performSelectorOnMainThread:@selector(stringByEvaluatingJavaScriptFromString:) withObject:script waitUntilDone:YES];
+}
+
 - (void)createServiceWorkerFromScript:(NSString *)script
 {
-    // Create a JS context.
-    JSContext *context = [JSContext new];
+    // Get the JSContext from the webview
+    self.context = [self.workerWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
 
-    [context setExceptionHandler:^(JSContext *context, JSValue *value) {
+    [self.context setExceptionHandler:^(JSContext *context, JSValue *value) {
         NSLog(@"%@", value);
     }];
 
-    context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
+    // Pipe JS logging in this context to NSLog.
+    // NOTE: Not the nicest of hacks, but useful!
+    [self evaluateScript:@"var console = {}"];
+    self.context[@"console"][@"log"] = ^(NSString *message) {
+        NSLog(@"JS log: %@", message);
+    };
+
+    self.context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
         FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
         [self.requestDelegates removeObjectForKey:requestId];
 
-        NSData *data = [[response[@"body"] toString] dataUsingEncoding:NSUTF8StringEncoding];
-        JSValue *headerList = response[@"header_list"];
-        NSString *mimeType = [headerList[@"mime_type"] toString];
+        // Convert the response body to base64.
+        NSData *data = [NSData dataFromBase64String:[response[@"body"] toString]];
+        JSValue *headerList = response[@"headerList"];
+        NSString *mimeType = [headerList[@"mimeType"] toString];
         NSString *encoding = @"utf-8";
         NSString *url = [response[@"url"] toString]; // TODO: Can this ever be different than the request url? if not, don't allow it to be overridden
 
@@ -331,7 +233,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [interceptor handleAResponse:urlResponse withSomeData:data];
     };
 
-    context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
+    self.context[@"handleFetchDefault"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
@@ -340,28 +242,37 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [interceptor passThrough];
     };
 
+    self.context[@"handleTrueFetch"] = ^(JSValue *resourceUrl, JSValue *resolve, JSValue *reject) {
+        // Create the request.
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[resourceUrl toString]]];
+        [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:request];
+
+        // Create a connection and send the request.
+        FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
+        delegate.resolve = resolve;
+        delegate.reject = reject;
+        [NSURLConnection connectionWithRequest:request delegate:delegate];
+    };
+
     // This function is called by `postMessage`, defined in message.js.
     // `postMessage` serializes the message using kamino.js and passes it here.
-    context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
+    self.context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
         [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
 
     // Load the required assets.
-    [self loadServiceWorkerAssetsIntoContext:context];
+    [self loadServiceWorkerAssetsIntoContext];
 
     // Load the ServiceWorker script.
-    [self loadScript:script intoContext:context];
-
-    // Save the JS context.
-    [self setContext:context];
+    [self loadScript:script];
 }
 
 - (void)createServiceWorkerClientWithUrl:(NSString *)url
 {
     // Create a ServiceWorker client.
     NSString *createClientCode = [NSString stringWithFormat:@"var client = new Client('%@');", url];
-    [self.context evaluateScript:createClientCode];
+    [self evaluateScript:createClientCode];
 }
 
 - (NSString *)readScriptAtRelativePath:(NSString *)relativePath
@@ -385,7 +296,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     return script;
 }
 
-- (void)loadServiceWorkerAssetsIntoContext:(JSContext *)context
+- (void)loadServiceWorkerAssetsIntoContext
 {
     // Specify the assets directory.
     // TODO: Move assets up one directory, so they're not in www.
@@ -397,18 +308,21 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // Read and load each asset.
     for (NSString *assetFilename in assetFilenames) {
         NSString *relativePath = [NSString stringWithFormat:@"www/sw_assets/%@", assetFilename];
-        [self readAndLoadScriptAtRelativePath:relativePath intoContext:context];
+        [self readAndLoadScriptAtRelativePath:relativePath];
     }
 }
 
-- (void)loadScript:(NSString *)script intoContext:(JSContext *)context
+- (void)loadScript:(NSString *)script
 {
     // Evaluate the script.
-    [context evaluateScript:script];
+    [self evaluateScript:script];
 }
 
-- (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath intoContext:(JSContext *)context
+- (void)readAndLoadScriptAtRelativePath:(NSString *)relativePath
 {
+    // Log!
+    NSLog(@"Loading script: %@", relativePath);
+
     // Read the script.
     NSString *script = [self readScriptAtRelativePath:relativePath];
 
@@ -417,19 +331,97 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     }
 
     // Load the script into the context.
-    [self loadScript:script intoContext:context];
+    [self loadScript:script];
 }
 
-
-// Test whether a resource should be fetched
-- (void)fetchResponseForRequest:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
+- (void)webViewDidFinishLoad:(UIWebView *)wv
 {
-    // Register the request and delegate
-    [self.requestDelegates setObject:protocol forKey:requestId];
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
+    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
+    NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+    if (self.serviceWorkerScriptFilename != nil) {
+        NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", self.serviceWorkerScriptFilename];
+        NSLog(@"ServiceWorker relative path: %@", serviceWorkerScriptRelativePath);
+        NSString *serviceWorkerScript = [self readScriptAtRelativePath:serviceWorkerScriptRelativePath];
+        if (serviceWorkerScript != nil) {
+            if (![[self hashForString:serviceWorkerScript] isEqualToString:serviceWorkerScriptChecksum]) {
+                serviceWorkerInstalled = NO;
+                serviceWorkerActivated = NO;
+                [defaults setBool:NO forKey:SERVICE_WORKER_INSTALLED];
+                [defaults setBool:NO forKey:SERVICE_WORKER_ACTIVATED];
+                [defaults setObject:[self hashForString:serviceWorkerScript] forKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
+            }
+            [self createServiceWorkerFromScript:serviceWorkerScript];
+            [self createServiceWorkerClientWithUrl:self.serviceWorkerScriptFilename];
+            if (!serviceWorkerInstalled) {
+                [self installServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerInstalled = YES;
+                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
+            }
+            // TODO: Don't do this immediately. Wait for installation to complete
+            if (!serviceWorkerActivated) {
+                [self activateServiceWorker];
+                // TODO: Don't do this on exception. Wait for extended events to complete
+                serviceWorkerActivated = YES;
+                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
+            }
+            isServiceWorkerActive = YES;
 
-    // Fire a fetch event in the JSContext
-    NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:{url:'%@'}, id:'%lld'}));", [[request URL] absoluteString], [requestId longLongValue]];
-    [self.context evaluateScript:dispatchCode];
+            NSLog(@"SW active!  Processing request queue.");
+            [self processRequestQueue];
+        }
+    } else {
+        NSLog(@"No service worker script defined");
+    }
+}
+
+- (void)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request {}
+- (void)webViewDidStartLoad:(UIWebView *)wv {}
+- (void)webView:(UIWebView *)wv didFailLoadWithError:(NSError *)error {}
+
+
+- (void)addRequestToQueue:(NSURLRequest *)request withId:(NSNumber *)requestId delegateTo:(NSURLProtocol *)protocol
+{
+    // Log!
+    NSLog(@"Adding to queue: %@", [[request URL] absoluteString]);
+
+    // Create a request object.
+    ServiceWorkerRequest *swRequest = [ServiceWorkerRequest new];
+    swRequest.request = request;
+    swRequest.requestId = requestId;
+    swRequest.protocol = protocol;
+
+    // Add the request object to the queue.
+    [self.requestQueue addObject:swRequest];
+
+    // Process the request queue.
+    [self processRequestQueue];
+}
+
+- (void)processRequestQueue {
+    // If the ServiceWorker isn't active, there's nothing we can do yet.
+    if (!isServiceWorkerActive) {
+        return;
+    }
+
+    for (ServiceWorkerRequest *swRequest in self.requestQueue) {
+        // Log!
+        NSLog(@"Processing from queue: %@", [[swRequest.request URL] absoluteString]);
+
+        // Register the request and delegate.
+        [self.requestDelegates setObject:swRequest.protocol forKey:swRequest.requestId];
+
+        // Fire a fetch event in the JSContext.
+        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@')", [[swRequest.request URL] absoluteString]];
+        NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:%@, id:'%lld'}));", requestCode, [swRequest.requestId longLongValue]];
+        [self evaluateScript:dispatchCode];
+    }
+
+    // Clear the queue.
+    // TODO: Deal with the possibility that requests could be added during the loop that we might not necessarily want to remove.
+    [self.requestQueue removeAllObjects];
 }
 
 @end
