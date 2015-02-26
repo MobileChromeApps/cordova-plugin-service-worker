@@ -47,5 +47,20 @@
     return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status] forKeys:@[@"url", @"body", @"status"]];
 }
 
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:self.url forKey:@"url"];
+    [aCoder encodeObject:self.body forKey:@"body"];
+}
+
+- (id)initWithCoder:(NSCoder *)decoder
+{
+    if (self = [super init]) {
+        self.url = [decoder decodeObjectForKey:@"url"];
+        self.body = [decoder decodeObjectForKey:@"body"];
+    }
+    return self;
+}
+
 @end
 
