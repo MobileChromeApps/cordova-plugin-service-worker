@@ -50,20 +50,36 @@ Request = function(url) {
   this.url = url;
 };
 
-Response = function(url, body) {
+Request.prototype.clone = function() {
+  return new Request(this.url);
+}
+
+Response = function(url, body, status) {
   this.url = url;
   this.body = body;
-  this.status = 200;
+  this.status = status || 200;
   this.headerList = { mimeType: "text/html" };
 };
 
+Response.prototype.clone = function() {
+  return new Response(this.url, this.body, this.status);
+}
+
 // This function returns a promise with a response for fetching the given resource.
-function fetch(resourceUrl) {
+function fetch(input) {
+  // Assume the passed in input is a resource URL string.
+  var resourceUrl = input;
+
+  // If it's actually an object, get the url string from it.
+  if (typeof input === 'object') {
+    resourceUrl = input.url;
+  }
+
   return new Promise(function(innerResolve, reject) {
     // Wrap the resolve callback so we can decode the response body.
     var resolve = function(response) {
-        response.body = window.atob(response.body);
-        innerResolve(response);
+        var jsResponse = new Response(response.url, window.atob(response.body), response.status);
+        innerResolve(jsResponse);
     }
 
     // Call a native function to fetch the resource.
