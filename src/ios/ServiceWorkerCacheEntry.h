@@ -20,19 +20,14 @@
 #import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
 
-#import "ServiceWorkerResponse.h"
-#import "ServiceWorkerCacheEntry.h"
+@class ServiceWorkerCache;
 
-@interface ServiceWorkerCache : NSManagedObject
+@interface ServiceWorkerCacheEntry : NSManagedObject
 
--(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request inContext:(NSManagedObjectContext *)moc;
--(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options inContext:(NSManagedObjectContext *)moc;
--(void) putRequest:(NSURLRequest *)request andResponse:(ServiceWorkerResponse *)response inContext:(NSManagedObjectContext *)moc;
--(bool) deleteRequest:(NSURLRequest *)request fromContext:(NSManagedObjectContext *)moc;
--(NSArray *)requestsFromContext:(NSManagedObjectContext *)moc;
-
-@property (nonatomic, retain) NSString * name;
-@property (nonatomic, retain) NSString * scope;
-@property (nonatomic, retain) NSManagedObject *entries;
+@property (nonatomic, retain) NSString * query;
+@property (nonatomic, retain) NSData * request;
+@property (nonatomic, retain) NSData * response;
+@property (nonatomic, retain) NSString * url;
+@property (nonatomic, retain) ServiceWorkerCache *cache;
 
 @end

@@ -23,7 +23,7 @@
 #import "CDVServiceWorker.h"
 #import "FetchConnectionDelegate.h"
 #import "FetchInterceptorProtocol.h"
-#import "ServiceWorkerCache.h"
+#import "ServiceWorkerCacheApi.h"
 #import "ServiceWorkerRequest.h"
 
 static bool isServiceWorkerActive = NO;

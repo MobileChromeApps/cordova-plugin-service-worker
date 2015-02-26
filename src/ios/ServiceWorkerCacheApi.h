@@ -16,23 +16,26 @@
  specific language governing permissions and limitations
  under the License.
  */
-
-#import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
-
+#import <JavaScriptCore/JSContext.h>
 #import "ServiceWorkerResponse.h"
-#import "ServiceWorkerCacheEntry.h"
+#import "ServiceWorkerCache.h"
 
-@interface ServiceWorkerCache : NSManagedObject
 
--(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request inContext:(NSManagedObjectContext *)moc;
--(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options inContext:(NSManagedObjectContext *)moc;
--(void) putRequest:(NSURLRequest *)request andResponse:(ServiceWorkerResponse *)response inContext:(NSManagedObjectContext *)moc;
--(bool) deleteRequest:(NSURLRequest *)request fromContext:(NSManagedObjectContext *)moc;
--(NSArray *)requestsFromContext:(NSManagedObjectContext *)moc;
+@interface ServiceWorkerCacheStorage : NSObject { }
 
-@property (nonatomic, retain) NSString * name;
-@property (nonatomic, retain) NSString * scope;
-@property (nonatomic, retain) NSManagedObject *entries;
+-(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request;
+-(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options;
+
+@property (nonatomic, retain) NSMutableDictionary *caches;
+@end
+
+@interface ServiceWorkerCacheApi : NSObject { }
+
++(void)defineFunctionsInContext:(JSContext *)context;
++(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope;
++(BOOL)initializeStorage;
 
 @end
+
