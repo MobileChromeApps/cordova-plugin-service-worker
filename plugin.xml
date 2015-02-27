@@ -46,6 +46,10 @@
         <source-file src="src/ios/FetchInterceptorProtocol.m" />
         <header-file src="src/ios/ServiceWorkerCache.h" />
         <source-file src="src/ios/ServiceWorkerCache.m" />
+        <header-file src="src/ios/ServiceWorkerCacheApi.h" />
+        <source-file src="src/ios/ServiceWorkerCacheApi.m" />
+        <header-file src="src/ios/ServiceWorkerCacheEntry.h" />
+        <source-file src="src/ios/ServiceWorkerCacheEntry.m" />
         <header-file src="src/ios/ServiceWorkerRequest.h" />
         <source-file src="src/ios/ServiceWorkerRequest.m" />
         <header-file src="src/ios/ServiceWorkerResponse.h" />
