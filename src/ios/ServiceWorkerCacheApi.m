@@ -17,6 +17,7 @@
  under the License.
  */
 
+#import <Foundation/Foundation.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import "FetchConnectionDelegate.h"
 #import "ServiceWorkerCacheApi.h"
@@ -87,7 +88,8 @@ static NSManagedObjectContext *moc;
 -(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options
 {
     ServiceWorkerResponse *response = nil;
-    for (ServiceWorkerCache* cache in self.caches) {
+    for (NSString* cacheName in self.caches) {
+        ServiceWorkerCache* cache = self.caches[cacheName];
         response = [cache matchForRequest:request withOptions:options inContext:moc];
         if (response != nil) {
             break;
@@ -118,7 +120,10 @@ static NSMutableDictionary *cacheStorageMap;
         
         NSError *err;
         //TODO: switch to NSSQLiteStoreType!
-        [psc addPersistentStoreWithType:NSInMemoryStoreType configuration:nil URL:nil options:nil error:&err];
+        NSURL *storeURL;
+        NSFileManager *fm = [NSFileManager defaultManager];
+        storeURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
+        [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
         if (err) {
             // CHECK ERRORS!
             return NO;
