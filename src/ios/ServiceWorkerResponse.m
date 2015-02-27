@@ -51,6 +51,7 @@
 {
     [aCoder encodeObject:self.url forKey:@"url"];
     [aCoder encodeObject:self.body forKey:@"body"];
+    [aCoder encodeInt:[self.status intValue] forKey:@"status"];
 }
 
 - (id)initWithCoder:(NSCoder *)decoder
@@ -58,6 +59,7 @@
     if (self = [super init]) {
         self.url = [decoder decodeObjectForKey:@"url"];
         self.body = [decoder decodeObjectForKey:@"body"];
+        self.status = [NSNumber numberWithInt:[decoder decodeIntForKey:@"status"]];
     }
     return self;
 }
