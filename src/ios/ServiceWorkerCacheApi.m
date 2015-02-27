@@ -24,6 +24,7 @@
 #import "ServiceWorkerResponse.h"
 
 static NSManagedObjectContext *moc;
+static NSString *rootPath_;
 
 @implementation ServiceWorkerCacheStorage
 
@@ -152,6 +153,10 @@ static NSMutableDictionary *cacheStorageMap;
 
 +(void)defineFunctionsInContext:(JSContext *)context
 {
+    //TODO: Move this somewhere much better
+    NSBundle* mainBundle = [NSBundle mainBundle];
+    rootPath_ = [[NSURL fileURLWithPath:[mainBundle pathForResource:@"www" ofType:@"" inDirectory:@""]] absoluteString];
+
     // Cache functions.
 
     // Resolve with a response.
@@ -301,6 +306,9 @@ static NSMutableDictionary *cacheStorageMap;
 + (NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
 {
     NSString *urlString = requestDictionary[@"url"];
+    if ([urlString hasPrefix:rootPath_]) {
+        urlString = [urlString substringFromIndex:[rootPath_ length]-1];
+    }
     return [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
 }
 

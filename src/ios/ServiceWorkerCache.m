@@ -29,9 +29,18 @@
 -(NSString *)urlWithoutQueryForUrl:(NSURL *)url
 {
     NSURL *absoluteURL = [url absoluteURL];
-    NSURL *urlWithoutQuery = [[NSURL alloc] initWithScheme:[[absoluteURL scheme] lowercaseString]
-                                                    host:[[absoluteURL host] lowercaseString]
-                                                    path:[absoluteURL path]];
+    NSURL *urlWithoutQuery;
+    if ([absoluteURL scheme] == nil) {
+        NSString *path = [absoluteURL path];
+        NSRange queryRange = [path rangeOfString:@"?"];
+        if (queryRange.location != NSNotFound) {
+            path = [path substringToIndex:queryRange.location];
+        }
+        return path;
+    }
+    urlWithoutQuery = [[NSURL alloc] initWithScheme:[[absoluteURL scheme] lowercaseString]
+                                               host:[[absoluteURL host] lowercaseString]
+                                               path:[absoluteURL path]];
     return [urlWithoutQuery absoluteString];
 }
 
