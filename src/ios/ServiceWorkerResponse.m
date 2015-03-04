@@ -26,11 +26,12 @@
 @synthesize body = _body;
 @synthesize status = _status;
 
-- (id) initWithUrl:(NSString *)url body:(NSString *)body status:(NSNumber *)status {
+- (id) initWithUrl:(NSString *)url body:(NSString *)body status:(NSNumber *)status headers:(NSDictionary *)headers {
     if (self = [super init]) {
         _url = url;
         _body = body;
         _status = status;
+        _headers = headers;
     }
     return self;
 }
@@ -40,11 +41,12 @@
     NSString *url = [jvalue[@"url"] toString];
     NSString *body = [jvalue[@"body"] toString];
     NSNumber *status = [jvalue[@"status"] toNumber];
-    return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status];
+    NSDictionary *headers = [jvalue[@"headers"] toDictionary];
+    return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
 }
 
 - (NSDictionary *)toDictionary {
-    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status] forKeys:@[@"url", @"body", @"status"]];
+    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status, self.headers] forKeys:@[@"url", @"body", @"status", @"headers"]];
 }
 
 - (void)encodeWithCoder:(NSCoder *)aCoder
@@ -52,6 +54,7 @@
     [aCoder encodeObject:self.url forKey:@"url"];
     [aCoder encodeObject:self.body forKey:@"body"];
     [aCoder encodeInt:[self.status intValue] forKey:@"status"];
+    [aCoder encodeObject:self.headers forKey:@"headers"];
 }
 
 - (id)initWithCoder:(NSCoder *)decoder
@@ -60,6 +63,7 @@
         self.url = [decoder decodeObjectForKey:@"url"];
         self.body = [decoder decodeObjectForKey:@"body"];
         self.status = [NSNumber numberWithInt:[decoder decodeIntForKey:@"status"]];
+        self.headers = [decoder decodeObjectForKey:@"headers"];
     }
     return self;
 }

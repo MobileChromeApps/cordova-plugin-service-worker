@@ -45,45 +45,81 @@ FetchEvent.prototype.default = function(ev) {
   handleFetchDefault(ev.__requestId, {url:ev.request.url});
 };
 
-// These objects are *incredibly* simplified right now.
-Request = function(url) {
+Headers = function(headerDict) {
+  // TODO: Allow multiple values with the same key.
+  this.headerDict = headerDict || {};
+};
+
+Headers.prototype.append = function(name, value) {
+  this.headerDict[name] = value;
+};
+
+Headers.prototype.delete = function(name) {
+  delete this.headerDict[name];
+};
+
+Headers.prototype.get = function(name) {
+  return this.headerDict[name];
+};
+
+Headers.prototype.getAll = function(name) {
+  return this.headerDict[name];
+};
+
+Headers.prototype.has = function(name, value) {
+  return this.headerDict[name] !== undefined;
+};
+
+Headers.prototype.set = function(name, value) {
+  this.headerDict[name] = value;
+};
+
+Request = function(method, url, headers) {
+  this.method = method;
   this.url = url;
+  this.headers = headers || new Headers({});
 };
 
 Request.prototype.clone = function() {
-  return new Request(this.url);
+  return new Request(this.method, this.url, this.headers);
 }
 
-Response = function(url, body, status) {
+Response = function(url, body, status, headers) {
   this.url = url;
   this.body = body;
   this.status = status || 200;
-  this.headerList = { mimeType: "text/html" };
+  this.headers = headers || new Headers({});
 };
 
 Response.prototype.clone = function() {
-  return new Response(this.url, this.body, this.status);
+  return new Response(this.url, this.body, this.status, this.headers);
 }
 
 // This function returns a promise with a response for fetching the given resource.
 function fetch(input) {
   // Assume the passed in input is a resource URL string.
-  var resourceUrl = input;
+  // TODO: What should the default headers be?
+  var method = 'GET';
+  var url = input;
+  var headers = {};
 
-  // If it's actually an object, get the url string from it.
+  // If it's actually an object, get the data from it.
   if (typeof input === 'object') {
-    resourceUrl = input.url;
+    method = input.method;
+    url = input.url;
+    headers = input.headers;
   }
 
   return new Promise(function(innerResolve, reject) {
     // Wrap the resolve callback so we can decode the response body.
     var resolve = function(response) {
-        var jsResponse = new Response(response.url, window.atob(response.body), response.status);
+        console.log("RESPONSE HEADERS FOR " + response.url + ": " + JSON.stringify(response.headers));
+        var jsResponse = new Response(response.url, window.atob(response.body), response.status, response.headers);
         innerResolve(jsResponse);
     }
 
     // Call a native function to fetch the resource.
-    handleTrueFetch(resourceUrl, resolve, reject);
+    handleTrueFetch(method, url, headers, resolve, reject);
   });
 }
 

@@ -24,6 +24,7 @@
 @property (nonatomic, strong) NSString *url;
 @property (nonatomic, strong) NSString *body;
 @property (nonatomic, strong) NSNumber *status;
+@property (nonatomic, strong) NSDictionary *headers;
 
 + (ServiceWorkerResponse *)responseFromJSValue:(JSValue *)value;
 - (NSDictionary *)toDictionary;

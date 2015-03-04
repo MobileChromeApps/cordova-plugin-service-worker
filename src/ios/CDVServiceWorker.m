@@ -238,12 +238,13 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSLog(@"JS log: %@", message);
     };
 
+    CDVServiceWorker * __weak weakSelf = self;
     self.context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
-        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
-        [self.requestDelegates removeObjectForKey:requestId];
+        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[weakSelf.requestDelegates objectForKey:requestId];
+        [weakSelf.requestDelegates removeObjectForKey:requestId];
 
         // Convert the response body to base64.
         NSData *data = [NSData dataFromBase64String:[response[@"body"] toString]];
@@ -264,14 +265,19 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
         NSNumber *requestId = [formatter numberFromString:[jsRequestId toString]];
-        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[self.requestDelegates objectForKey:requestId];
-        [self.requestDelegates removeObjectForKey:requestId];
+        FetchInterceptorProtocol *interceptor = (FetchInterceptorProtocol *)[weakSelf.requestDelegates objectForKey:requestId];
+        [weakSelf.requestDelegates removeObjectForKey:requestId];
         [interceptor passThrough];
     };
 
-    self.context[@"handleTrueFetch"] = ^(JSValue *resourceUrl, JSValue *resolve, JSValue *reject) {
+    self.context[@"handleTrueFetch"] = ^(JSValue *method, JSValue *resourceUrl, JSValue *headers, JSValue *resolve, JSValue *reject) {
         // Create the request.
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[resourceUrl toString]]];
+        [request setHTTPMethod:[method toString]];
+        NSDictionary *headerDictionary = [headers toDictionary];
+        [headerDictionary enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL* stop) {
+            [request addValue:value forHTTPHeaderField:key];
+        }];
         [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:request];
 
         // Create a connection and send the request.
@@ -285,7 +291,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // `postMessage` serializes the message using kamino.js and passes it here.
     self.context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
-        [self.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
+        [weakSelf.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
     };
 
     // Install cache API JS methods
@@ -444,7 +450,15 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
         [self.requestDelegates setObject:swRequest.protocol forKey:swRequest.requestId];
 
         // Fire a fetch event in the JSContext.
-        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@')", [[swRequest.request URL] absoluteString]];
+        NSURLRequest *request = swRequest.request;
+        NSString *method = [request HTTPMethod];
+        NSString *url = [[request URL] absoluteString];
+        NSData *headerData = [NSJSONSerialization dataWithJSONObject:[request allHTTPHeaderFields]
+                                                             options:NSJSONWritingPrettyPrinted
+                                                               error:nil];
+        NSString *headers = [[[NSString alloc] initWithData:headerData encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+
+        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@', '%@', '%@')", method, url, headers];
         NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:%@, id:'%lld'}));", requestCode, [swRequest.requestId longLongValue]];
         [self evaluateScript:dispatchCode];
     }
