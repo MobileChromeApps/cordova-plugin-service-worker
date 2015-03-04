@@ -60,25 +60,62 @@ static NSString *rootPath_;
     return [self.caches allKeys];
 }
 
--(ServiceWorkerCache *)cacheWithName:(NSString *)cacheName
+-(ServiceWorkerCache *)cacheWithName:(NSString *)cacheName create:(BOOL)create
 {
     ServiceWorkerCache *cache = [self.caches objectForKey:cacheName];
     if (cache == nil) {
-        cache = (ServiceWorkerCache *)[NSEntityDescription insertNewObjectForEntityForName:@"Cache"
-        inManagedObjectContext:moc];
-        [self.caches setObject:cache forKey:cacheName];
-        cache.name = cacheName;
-        NSError *err;
-        [moc save:&err];
+        // First try to get it from storage:
+        NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+
+        NSEntityDescription *entity = [NSEntityDescription
+                                       entityForName:@"Cache" inManagedObjectContext:moc];
+        [fetchRequest setEntity:entity];
+
+        NSPredicate *predicate;
+
+        predicate = [NSPredicate predicateWithFormat:@"(name == %@)", cacheName];
+        [fetchRequest setPredicate:predicate];
+
+        NSError *error;
+        NSArray *entries = [moc executeFetchRequest:fetchRequest error:&error];
+        if (entries.count > 0) {
+            cache = entries[0];
+        } else if (create) {
+            // Not there; add it
+            cache = (ServiceWorkerCache *)[NSEntityDescription insertNewObjectForEntityForName:@"Cache"
+                                                                        inManagedObjectContext:moc];
+            [self.caches setObject:cache forKey:cacheName];
+            cache.name = cacheName;
+            NSError *err;
+            [moc save:&err];
+        }
+    }
+    if (cache) {
+        // Cache the cache
         [self.caches setObject:cache forKey:cacheName];
     }
     return cache;
 }
 
+-(ServiceWorkerCache *)cacheWithName:(NSString *)cacheName
+{
+    return [self cacheWithName:cacheName create:YES];
+}
+
 -(void)deleteCacheWithName:(NSString *)cacheName
 {
-//TODO: Delete from persistent storage
-    [self.caches removeObjectForKey:cacheName];
+    ServiceWorkerCache *cache = [self cacheWithName:cacheName create:NO];
+    if (cache != nil) {
+        [moc deleteObject:cache];
+        NSError *err;
+        [moc save:&err];
+        [self.caches removeObjectForKey:cacheName];
+    }
+}
+
+-(BOOL)hasCacheWithName:(NSString *)cacheName
+{
+    return ([self cacheWithName:cacheName create:NO] != nil);
 }
 
 -(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request
@@ -227,7 +264,6 @@ static NSMutableDictionary *cacheStorageMap;
         }
         
         // Convert the response into a ServiceWorkerResponse.
-        // TODO: Factor this out.
         ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromJSValue:response];
         [cache putRequest:urlRequest andResponse:serviceWorkerResponse inContext:moc];
 
@@ -281,6 +317,19 @@ static NSMutableDictionary *cacheStorageMap;
 
         // Resolve!
         [resolve callWithArguments:@[[NSNull null]]];
+    };
+
+    // Resolve with boolean.
+    context[@"hasCache"] = ^(JSValue *cacheName, JSValue *resolve) {
+        // Retrieve the caches.
+        NSURL *scope = [NSURL URLWithString:@"/"];
+        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+
+        // Get or create the specified cache.
+        BOOL hasCache = [cacheStorage hasCacheWithName:[cacheName toString]];
+
+        // Resolve!
+        [resolve callWithArguments:@[[NSNumber numberWithBool:hasCache]]];
     };
 
     // Resolve with nothing.
