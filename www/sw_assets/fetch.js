@@ -113,7 +113,6 @@ function fetch(input) {
   return new Promise(function(innerResolve, reject) {
     // Wrap the resolve callback so we can decode the response body.
     var resolve = function(response) {
-        console.log("RESPONSE HEADERS FOR " + response.url + ": " + JSON.stringify(response.headers));
         var jsResponse = new Response(response.url, window.atob(response.body), response.status, response.headers);
         innerResolve(jsResponse);
     }
