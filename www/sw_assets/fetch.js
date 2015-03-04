@@ -84,15 +84,15 @@ Request.prototype.clone = function() {
   return new Request(this.method, this.url, this.headers);
 }
 
-Response = function(url, body, status, headers) {
-  this.url = url;
+Response = function(body, url, status, headers) {
   this.body = body;
+  this.url = url;
   this.status = status || 200;
   this.headers = headers || new Headers({});
 };
 
 Response.prototype.clone = function() {
-  return new Response(this.url, this.body, this.status, this.headers);
+  return new Response(this.body, this.url, this.status, this.headers);
 }
 
 // This function returns a promise with a response for fetching the given resource.
@@ -113,7 +113,7 @@ function fetch(input) {
   return new Promise(function(innerResolve, reject) {
     // Wrap the resolve callback so we can decode the response body.
     var resolve = function(response) {
-        var jsResponse = new Response(response.url, window.atob(response.body), response.status, response.headers);
+        var jsResponse = new Response(window.atob(response.body), response.url, response.status, response.headers);
         innerResolve(jsResponse);
     }
 
