@@ -226,7 +226,11 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 - (void)evaluateScript:(NSString *)script
 {
-    [self.workerWebView performSelectorOnMainThread:@selector(stringByEvaluatingJavaScriptFromString:) withObject:script waitUntilDone:YES];
+    if ([NSThread isMainThread]) {
+        [self.workerWebView stringByEvaluatingJavaScriptFromString:script];
+    } else {
+        [self.workerWebView performSelectorOnMainThread:@selector(stringByEvaluatingJavaScriptFromString:) withObject:script waitUntilDone:NO];
+    }
 }
 
 - (void)createServiceWorkerFromScript:(NSString *)script
