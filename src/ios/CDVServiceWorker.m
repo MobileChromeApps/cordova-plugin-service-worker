@@ -207,12 +207,19 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
 - (void)installServiceWorker
 {
-    [self evaluateScript:@"FireInstallEvent().then(function() { console.log('Service Worker Installed');});"];
+    [self evaluateScript:@"FireInstallEvent().then(installServiceWorkerCallback);"];
 }
 
 - (void)activateServiceWorker
 {
-    [self evaluateScript:@"FireActivateEvent().then(function() { console.log('Service Worker Activated');});"];
+    [self evaluateScript:@"FireActivateEvent().then(activateServiceWorkerCallback);"];
+}
+
+- (void)initiateServiceWorker
+{
+    isServiceWorkerActive = YES;
+    NSLog(@"SW active!  Processing request queue.");
+    [self processRequestQueue];
 }
 
 # pragma mark Helper Functions
@@ -239,6 +246,17 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     CDVServiceWorker * __weak weakSelf = self;
+
+    self.context[@"installServiceWorkerCallback"] = ^() {
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:SERVICE_WORKER_INSTALLED];
+        [weakSelf activateServiceWorker];
+    };
+
+    self.context[@"activateServiceWorkerCallback"] = ^() {
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
+        [weakSelf initiateServiceWorker];
+    };
+
     self.context[@"handleFetchResponse"] = ^(JSValue *jsRequestId, JSValue *response) {
         NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
         [formatter setNumberStyle:NSNumberFormatterDecimalStyle];
@@ -248,8 +266,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
         // Convert the response body to base64.
         NSData *data = [NSData dataFromBase64String:[response[@"body"] toString]];
-        JSValue *headerList = response[@"headerList"];
-        NSString *mimeType = [headerList[@"mimeType"] toString];
+        JSValue *headers = response[@"headers"];
+        NSString *mimeType = [headers[@"mimeType"] toString];
         NSString *encoding = @"utf-8";
         NSString *url = [response[@"url"] toString]; // TODO: Can this ever be different than the request url? if not, don't allow it to be overridden
 
@@ -373,8 +391,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 - (void)webViewDidFinishLoad:(UIWebView *)wv
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    Boolean serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
-    Boolean serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
+    bool serviceWorkerInstalled = [defaults boolForKey:SERVICE_WORKER_INSTALLED];
+    bool serviceWorkerActivated = [defaults boolForKey:SERVICE_WORKER_ACTIVATED];
     NSString *serviceWorkerScriptChecksum = [defaults stringForKey:SERVICE_WORKER_SCRIPT_CHECKSUM];
     if (self.serviceWorkerScriptFilename != nil) {
         NSString *serviceWorkerScriptRelativePath = [NSString stringWithFormat:@"www/%@", self.serviceWorkerScriptFilename];
@@ -392,21 +410,11 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
             [self createServiceWorkerClientWithUrl:self.serviceWorkerScriptFilename];
             if (!serviceWorkerInstalled) {
                 [self installServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerInstalled = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_INSTALLED];
-            }
-            // TODO: Don't do this immediately. Wait for installation to complete
-            if (!serviceWorkerActivated) {
+            } else if (!serviceWorkerActivated) {
                 [self activateServiceWorker];
-                // TODO: Don't do this on exception. Wait for extended events to complete
-                serviceWorkerActivated = YES;
-                [defaults setBool:YES forKey:SERVICE_WORKER_ACTIVATED];
+            } else {
+                [self initiateServiceWorker];
             }
-            isServiceWorkerActive = YES;
-
-            NSLog(@"SW active!  Processing request queue.");
-            [self processRequestQueue];
         }
     } else {
         NSLog(@"No service worker script defined");

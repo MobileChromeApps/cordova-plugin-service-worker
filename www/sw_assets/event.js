@@ -124,17 +124,20 @@ ActivateEvent = function() {
 ActivateEvent.prototype = new ExtendableEvent('activate');
 
 FireInstallEvent = function() {
+  console.log("=====FIRE INSTALL EVENT");
   var ev = new InstallEvent();
   var InstallFailed;
   dispatchEvent(ev);
   if (ev.promises instanceof Array) {
-    return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
+    console.log("=====WAITUNTIL PROMISES: " + ev.promises.length);
+    return Promise.all(ev.promises).then(function() { console.log("=====INSTALL THEN"); }, function(err) { InstallFailed = true; });
   } else {
     return Promise.resolve();
   }
 };
 
 FireActivateEvent = function() {
+  console.log("=====FIRE ACTIVATE EVENT");
   var ev = new ActivateEvent();
   dispatchEvent(ev);
   if (ev.promises instanceof Array) {
