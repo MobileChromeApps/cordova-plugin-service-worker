@@ -75,23 +75,47 @@
 
 -(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options inContext:(NSManagedObjectContext *)moc
 {
+    NSArray *candidateEntries = [self matchAllForRequest:request withOptions:options inContext:moc];
+    if (candidateEntries == nil || candidateEntries.count == 0) {
+        return nil;
+    }
+    
+    ServiceWorkerCacheEntry *bestEntry = (ServiceWorkerCacheEntry *)candidateEntries[0];
+    ServiceWorkerResponse *bestResponse = (ServiceWorkerResponse *)[NSKeyedUnarchiver unarchiveObjectWithData:bestEntry.response];
+    return bestResponse;
+}
+
+-(NSArray *)matchAllForRequest:(NSURLRequest *)request withOptions:(/*ServiceWorkerCacheMatchOptions*/NSDictionary *)options inContext:(NSManagedObjectContext *)moc
+{
     BOOL query = [options[@"includeQuery"] boolValue];
     NSArray *entries = [self entriesMatchingRequestByURL:request.URL includesQuery:query inContext:moc];
     
     if (entries == nil || entries.count == 0) {
         return nil;
     }
-    
+
+    NSMutableArray *candidateEntries = [[NSMutableArray alloc] init];
     for (ServiceWorkerCacheEntry *entry in entries) {
-        NSURLRequest *cachedRequest = (NSURLRequest *)[NSKeyedUnarchiver unarchiveObjectWithData:entry.request];
-        NSString *varyHeader = [cachedRequest valueForHTTPHeaderField:@"Vary"];
+        ServiceWorkerResponse *cachedResponse = (ServiceWorkerResponse *)[NSKeyedUnarchiver unarchiveObjectWithData:entry.response];
+        NSString *varyHeader = cachedResponse.headers[@"Vary"];
+        BOOL candidateIsViable = YES;
         if (varyHeader != nil) {
-            
+            NSURLRequest *originalRequest = (NSURLRequest *)[NSKeyedUnarchiver unarchiveObjectWithData:entry.request];
+            for (NSString *rawVaryHeaderField in [varyHeader componentsSeparatedByString:@","]) {
+                NSString *varyHeaderField = [rawVaryHeaderField stringByTrimmingCharactersInSet:
+                                  [NSCharacterSet whitespaceCharacterSet]];
+                if (![[originalRequest valueForHTTPHeaderField:varyHeaderField] isEqualToString:[request valueForHTTPHeaderField:varyHeaderField]])
+                    candidateIsViable = NO;
+                    // Break out of the Vary header checks; continue with the next candidate response.
+                    break;
+            }
+        }
+        if (candidateIsViable) {
+            [candidateEntries insertObject:entry atIndex:[candidateEntries count]];
         }
     }
-    ServiceWorkerCacheEntry *bestEntry = (ServiceWorkerCacheEntry *)entries[0];
-    ServiceWorkerResponse *bestResponse = (ServiceWorkerResponse *)[NSKeyedUnarchiver unarchiveObjectWithData:bestEntry.response];
-    return bestResponse;
+    NSLog(@"matchAllForRequest returned %lu entries", (unsigned long)[candidateEntries count]);
+    return candidateEntries;
 }
 
 -(void)putRequest:(NSURLRequest *)request andResponse:(ServiceWorkerResponse *)response inContext:(NSManagedObjectContext *)moc

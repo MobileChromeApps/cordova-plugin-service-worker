@@ -79,6 +79,7 @@ static NSString *rootPath_;
         NSError *error;
         NSArray *entries = [moc executeFetchRequest:fetchRequest error:&error];
         if (entries.count > 0) {
+        // TODO: HAVE NOT SEEN THIS BRANCH EXECUTE YET.
             cache = entries[0];
         } else if (create) {
             // Not there; add it

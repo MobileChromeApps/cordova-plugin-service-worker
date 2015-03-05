@@ -41,7 +41,7 @@
     NSString *url = [jvalue[@"url"] toString];
     NSString *body = [jvalue[@"body"] toString];
     NSNumber *status = [jvalue[@"status"] toNumber];
-    NSDictionary *headers = [jvalue[@"headers"] toDictionary];
+    NSDictionary *headers = [jvalue[@"headers"][@"headerDict"] toDictionary];
     return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
 }
 
