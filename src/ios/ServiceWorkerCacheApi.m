@@ -262,14 +262,21 @@ static NSMutableDictionary *cacheStorageMap;
         NSURL *cacheDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
         NSURL *storeURL = [NSURL URLWithString:@"swcache.db" relativeToURL:cacheDirectoryURL];
         NSLog(@"Using file %@ for service worker cache", [storeURL absoluteString]);
+        err = nil;
         [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
         if (err) {
-            // CHECK ERRORS!
-            return NO;
-        } else {
-            moc = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
-            moc.persistentStoreCoordinator = psc;
+            // Try to delete the old store and try again
+            [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] error:&err];
+            [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db-wal" relativeToURL:storeURL] error:&err];
+            [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db-shm" relativeToURL:storeURL] error:&err];
+            err = nil;
+            [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
+            if (err) {
+                return NO;
+            }
         }
+        moc = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+        moc.persistentStoreCoordinator = psc;
     }
     return YES;
 }
