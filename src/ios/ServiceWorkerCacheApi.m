@@ -261,8 +261,9 @@ static NSMutableDictionary *cacheStorageMap;
 
         NSError *err;
         NSFileManager *fm = [NSFileManager defaultManager];
-        NSURL *cacheDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
-        NSURL *storeURL = [NSURL URLWithString:@"swcache.db" relativeToURL:cacheDirectoryURL];
+        NSURL *documentsDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
+        NSURL *cacheDirectoryURL = [documentsDirectoryURL URLByAppendingPathComponent:@"CacheData"];
+        NSURL *storeURL = [cacheDirectoryURL URLByAppendingPathComponent:@"swcache.db"];
 
         if (![fm fileExistsAtPath:[storeURL path]]) {
             NSLog(@"Service Worker Cache doesn't exist.");
@@ -270,16 +271,19 @@ static NSMutableDictionary *cacheStorageMap;
             BOOL cacheDataIsDirectory;
             if ([fm fileExistsAtPath:initialDataPath isDirectory:&cacheDataIsDirectory]) {
                 if (cacheDataIsDirectory) {
+                    [fm createDirectoryAtURL:cacheDirectoryURL withIntermediateDirectories:YES attributes:nil error:&err];
+
                     NSURL *initialDataURL = [NSURL fileURLWithPath:initialDataPath isDirectory:YES];
                     NSLog(@"Copying Initial Cache.");
-                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db"] toURL:cacheDirectoryURL error:&err];
-                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db-shm"] toURL:cacheDirectoryURL error:&err];
-                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db-wal"] toURL:cacheDirectoryURL error:&err];
+                    NSArray *fileURLs = [fm contentsOfDirectoryAtURL:initialDataURL includingPropertiesForKeys:nil options:0 error:&err];
+                    for (NSURL *fileURL in fileURLs) {
+                        [fm copyItemAtURL:fileURL toURL:cacheDirectoryURL error:&err];
+                    }
                 }
             }
         }
 
-        NSLog(@"Using file %@ for service worker cache", [storeURL path]);
+        NSLog(@"Using file %@ for service worker cache", [cacheDirectoryURL path]);
         err = nil;
         [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
         if (err) {
