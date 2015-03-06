@@ -54,7 +54,6 @@
         <source-file src="src/ios/ServiceWorkerRequest.m" />
         <header-file src="src/ios/ServiceWorkerResponse.h" />
         <source-file src="src/ios/ServiceWorkerResponse.m" />
-        <other-file src="src/ios/ServiceWorkerCache.xcdatamodel/contents" target-dir="ServiceWorkerCache.xcdatamodeld/ServiceWorkerCache.xcdatamodel" />
         <framework src="JavaScriptCore.framework" />
         <framework src="CoreData.framework" />
     </platform>

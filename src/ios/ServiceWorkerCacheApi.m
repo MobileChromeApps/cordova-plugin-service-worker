@@ -151,17 +151,117 @@ static NSMutableDictionary *cacheStorageMap;
     return self;
 }
 
++(NSManagedObjectModel *)createManagedObjectModel
+{
+    NSManagedObjectModel *model = [[NSManagedObjectModel alloc] init];
+
+    NSMutableArray *entities = [NSMutableArray array];
+
+    // ServiceWorkerCache
+    NSEntityDescription *cacheEntity = [[NSEntityDescription alloc] init];
+    cacheEntity.name = @"Cache";
+    cacheEntity.managedObjectClassName = @"ServiceWorkerCache";
+
+    //ServiceWorkerCacheEntry
+    NSEntityDescription *cacheEntryEntity = [[NSEntityDescription alloc] init];
+    cacheEntryEntity.name = @"CacheEntry";
+    cacheEntryEntity.managedObjectClassName = @"ServiceWorkerCacheEntry";
+
+    NSMutableArray *cacheProperties = [NSMutableArray array];
+    NSMutableArray *cacheEntryProperties = [NSMutableArray array];
+
+    // ServiceWorkerCache::name
+    NSAttributeDescription *nameAttribute = [[NSAttributeDescription alloc] init];
+    nameAttribute.name = @"name";
+    nameAttribute.attributeType = NSStringAttributeType;
+    nameAttribute.optional = NO;
+    nameAttribute.indexed = YES;
+    [cacheProperties addObject:nameAttribute];
+
+    // ServiceWorkerCache::scope
+    NSAttributeDescription *scopeAttribute = [[NSAttributeDescription alloc] init];
+    scopeAttribute.name = @"scope";
+    scopeAttribute.attributeType = NSStringAttributeType;
+    scopeAttribute.optional = YES;
+    scopeAttribute.indexed = NO;
+    [cacheProperties addObject:scopeAttribute];
+
+    // ServiceWorkerCacheEntry::url
+    NSAttributeDescription *urlAttribute = [[NSAttributeDescription alloc] init];
+    urlAttribute.name = @"url";
+    urlAttribute.attributeType = NSStringAttributeType;
+    urlAttribute.optional = YES;
+    urlAttribute.indexed = YES;
+    [cacheEntryProperties addObject:urlAttribute];
+
+    // ServiceWorkerCacheEntry::query
+    NSAttributeDescription *queryAttribute = [[NSAttributeDescription alloc] init];
+    queryAttribute.name = @"query";
+    queryAttribute.attributeType = NSStringAttributeType;
+    queryAttribute.optional = YES;
+    queryAttribute.indexed = YES;
+    [cacheEntryProperties addObject:queryAttribute];
+
+    // ServiceWorkerCacheEntry::request
+    NSAttributeDescription *requestAttribute = [[NSAttributeDescription alloc] init];
+    requestAttribute.name = @"request";
+    requestAttribute.attributeType = NSBinaryDataAttributeType;
+    requestAttribute.optional = NO;
+    requestAttribute.indexed = NO;
+    [cacheEntryProperties addObject:requestAttribute];
+
+    // ServiceWorkerCacheEntry::response
+    NSAttributeDescription *responseAttribute = [[NSAttributeDescription alloc] init];
+    responseAttribute.name = @"response";
+    responseAttribute.attributeType = NSBinaryDataAttributeType;
+    responseAttribute.optional = NO;
+    responseAttribute.indexed = NO;
+    [cacheEntryProperties addObject:responseAttribute];
+
+
+    // ServiceWorkerCache::entries
+    NSRelationshipDescription *entriesRelationship = [[NSRelationshipDescription alloc] init];
+    entriesRelationship.name = @"entries";
+    entriesRelationship.destinationEntity = cacheEntryEntity;
+    entriesRelationship.minCount = 0;
+    entriesRelationship.maxCount = 0;
+    entriesRelationship.deleteRule = NSCascadeDeleteRule;
+
+    // ServiceWorkerCacheEntry::cache
+    NSRelationshipDescription *cacheRelationship = [[NSRelationshipDescription alloc] init];
+    cacheRelationship.name = @"cache";
+    cacheRelationship.destinationEntity = cacheEntity;
+    cacheRelationship.minCount = 0;
+    cacheRelationship.maxCount = 1;
+    cacheRelationship.deleteRule = NSNullifyDeleteRule;
+    cacheRelationship.inverseRelationship = entriesRelationship;
+    [cacheEntryProperties addObject:cacheRelationship];
+
+
+    entriesRelationship.inverseRelationship = cacheRelationship;
+    [cacheProperties addObject:entriesRelationship];
+
+    cacheEntity.properties = cacheProperties;
+    cacheEntryEntity.properties = cacheEntryProperties;
+
+    [entities addObject:cacheEntity];
+    [entities addObject:cacheEntryEntity];
+
+    model.entities = entities;
+    return model;
+}
+
 +(BOOL)initializeStorage
 {
     if (moc == nil) {
-        NSManagedObjectModel *model = [NSManagedObjectModel mergedModelFromBundles:[NSBundle allBundles]];
+        NSManagedObjectModel *model = [ServiceWorkerCacheApi createManagedObjectModel];
         NSPersistentStoreCoordinator *psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
         
         NSError *err;
-        //TODO: switch to NSSQLiteStoreType!
-        NSURL *storeURL;
         NSFileManager *fm = [NSFileManager defaultManager];
-        storeURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
+        NSURL *cacheDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
+        NSURL *storeURL = [NSURL URLWithString:@"swcache.db" relativeToURL:cacheDirectoryURL];
+        NSLog(@"Using file %@ for service worker cache", [storeURL absoluteString]);
         [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
         if (err) {
             // CHECK ERRORS!
