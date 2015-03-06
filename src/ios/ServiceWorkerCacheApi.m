@@ -263,14 +263,30 @@ static NSMutableDictionary *cacheStorageMap;
         NSFileManager *fm = [NSFileManager defaultManager];
         NSURL *cacheDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
         NSURL *storeURL = [NSURL URLWithString:@"swcache.db" relativeToURL:cacheDirectoryURL];
-        NSLog(@"Using file %@ for service worker cache", [storeURL absoluteString]);
+
+        if (![fm fileExistsAtPath:[storeURL path]]) {
+            NSLog(@"Service Worker Cache doesn't exist.");
+            NSString *initialDataPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"CacheData"];
+            BOOL cacheDataIsDirectory;
+            if ([fm fileExistsAtPath:initialDataPath isDirectory:&cacheDataIsDirectory]) {
+                if (cacheDataIsDirectory) {
+                    NSURL *initialDataURL = [NSURL fileURLWithPath:initialDataPath isDirectory:YES];
+                    NSLog(@"Copying Initial Cache.");
+                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db"] toURL:cacheDirectoryURL error:&err];
+                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db-shm"] toURL:cacheDirectoryURL error:&err];
+                    [fm copyItemAtURL:[initialDataURL URLByAppendingPathComponent:@"swcache.db-wal"] toURL:cacheDirectoryURL error:&err];
+                }
+            }
+        }
+
+        NSLog(@"Using file %@ for service worker cache", [storeURL path]);
         err = nil;
         [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
         if (err) {
             // Try to delete the old store and try again
             [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] error:&err];
-            [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db-wal" relativeToURL:storeURL] error:&err];
             [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db-shm" relativeToURL:storeURL] error:&err];
+            [fm removeItemAtURL:[NSURL URLWithString:@"swcache.db-wal" relativeToURL:storeURL] error:&err];
             err = nil;
             [psc addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:[NSURL URLWithString:@"swcache.db" relativeToURL:storeURL] options:nil error:&err];
             if (err) {
