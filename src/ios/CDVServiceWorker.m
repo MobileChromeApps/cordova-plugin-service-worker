@@ -470,7 +470,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
                                                                error:nil];
         NSString *headers = [[[NSString alloc] initWithData:headerData encoding:NSUTF8StringEncoding] stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
 
-        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@', '%@', '%@')", method, url, headers];
+        NSString *requestCode = [NSString stringWithFormat:@"new Request('%@', '%@', %@)", method, url, headers];
         NSString *dispatchCode = [NSString stringWithFormat:@"dispatchEvent(new FetchEvent({request:%@, id:'%lld'}));", requestCode, [swRequest.requestId longLongValue]];
         [self evaluateScript:dispatchCode];
     }

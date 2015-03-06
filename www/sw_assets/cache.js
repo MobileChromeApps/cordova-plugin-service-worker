@@ -20,16 +20,10 @@ Cache.prototype.matchAll = function(request, options) {
 };
 
 Cache.prototype.add = function(request) {
+  // Fetch a response for the given request, then put the pair into the cache.
   var cache = this;
-  return new Promise(function(resolve, reject) {
-    // This resolve function takes a response and calls `put` with it (and the request).
-    // Then it calls the given resolve function.
-    var innerResolve = function(response) {
-      cache.put(request, response).then(resolve, reject);
-    }
-
-    // Call the native add function.
-    cacheAdd(cache.name, request, innerResolve, reject);
+  return fetch(request).then(function(response) {
+    cache.put(request, response);
   });
 };
 
@@ -63,8 +57,18 @@ Cache.prototype.delete = function(request, options) {
 Cache.prototype.keys = function(request, options) {
   var cacheName = this.name;
   return new Promise(function(resolve, reject) {
+    // Convert the given request dictionaries to actual requests.
+    var innerResolve = function(dicts) {
+        var requests = [];
+        for (var i=0; i<dicts.length; i++) {
+            var requestDict = dicts[i];
+            requests.push(new Request(requestDict.method, requestDict.url, requestDict.headers));
+        }
+        resolve(requests);
+    };
+
     // Call the native keys function.
-    cacheKeys(cacheName, request, options, resolve, reject);
+    cacheKeys(cacheName, request, options, innerResolve, reject);
   });
 };
 

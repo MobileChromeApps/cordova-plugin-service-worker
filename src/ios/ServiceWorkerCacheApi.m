@@ -430,7 +430,21 @@ static NSMutableDictionary *cacheStorageMap;
         ServiceWorkerCache *cache =[cacheStorage cacheWithName:[cacheName toString]];
 
         // Return the requests from the cache.
-        [resolve callWithArguments:@[[cache requestsFromContext:moc]]];
+        // TODO: Use the given (optional) request.
+        NSArray *cacheEntries = [cache requestsFromContext:moc];
+        NSMutableArray *requests = [NSMutableArray new];
+        for (ServiceWorkerCacheEntry *entry in cacheEntries) {
+            NSURLRequest *urlRequest = (NSURLRequest *)[NSKeyedUnarchiver unarchiveObjectWithData:entry.request];
+            NSString *method = [urlRequest HTTPMethod];
+            NSString *url = [[urlRequest URL] absoluteString];
+            NSDictionary *headers = [urlRequest allHTTPHeaderFields];
+            if (headers == nil) {
+                headers = [NSDictionary new];
+            }
+            NSDictionary *requestDictionary = @{ @"method": method, @"url": url, @"headers": headers };
+            [requests addObject:requestDictionary];
+        }
+        [resolve callWithArguments:@[requests]];
     };
 
 
