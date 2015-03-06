@@ -46,12 +46,15 @@ FetchEvent.prototype.default = function(ev) {
 };
 
 Headers = function(headerDict) {
-  // TODO: Allow multiple values with the same key.
   this.headerDict = headerDict || {};
 };
 
 Headers.prototype.append = function(name, value) {
-  this.headerDict[name] = value;
+  if (this.headerDict[name]) {
+    this.headerDict[name].push(value);
+  } else {
+    this.headerDict[name] = [value];
+  }
 };
 
 Headers.prototype.delete = function(name) {
@@ -59,11 +62,11 @@ Headers.prototype.delete = function(name) {
 };
 
 Headers.prototype.get = function(name) {
-  return this.headerDict[name];
+  return this.headerDict[name] ? this.headerDict[name][0] : null;
 };
 
 Headers.prototype.getAll = function(name) {
-  return this.headerDict[name];
+  return this.headerDict[name] ? this.headerDict[name] : null;
 };
 
 Headers.prototype.has = function(name, value) {
@@ -71,7 +74,7 @@ Headers.prototype.has = function(name, value) {
 };
 
 Headers.prototype.set = function(name, value) {
-  this.headerDict[name] = value;
+  this.headerDict[name] = [value];
 };
 
 Request = function(method, url, headers) {
