@@ -25,7 +25,7 @@
 @interface ServiceWorkerCacheStorage : NSObject { }
 
 -(ServiceWorkerCache*)cacheWithName:(NSString *)cacheName;
--(void)deleteCacheWithName:(NSString *)cacheName;
+-(BOOL)deleteCacheWithName:(NSString *)cacheName;
 -(BOOL)hasCacheWithName:(NSString *)cacheName;
 
 -(ServiceWorkerResponse *)matchForRequest:(NSURLRequest *)request;

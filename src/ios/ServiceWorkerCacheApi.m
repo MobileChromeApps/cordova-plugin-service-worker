@@ -41,12 +41,12 @@ static NSString *rootPath_;
 
         NSError *error;
         NSArray *entries = [moc executeFetchRequest:fetchRequest error:&error];
-    
+
         // TODO: check error on entries == nil
         if (!entries) {
             entries = @[];
         }
-    
+
         caches_ = [[NSMutableDictionary alloc] initWithCapacity:entries.count+2];
         for (ServiceWorkerCache *cache in entries) {
             caches_[cache.name] = cache;
@@ -103,7 +103,7 @@ static NSString *rootPath_;
     return [self cacheWithName:cacheName create:YES];
 }
 
--(void)deleteCacheWithName:(NSString *)cacheName
+-(BOOL)deleteCacheWithName:(NSString *)cacheName
 {
     ServiceWorkerCache *cache = [self cacheWithName:cacheName create:NO];
     if (cache != nil) {
@@ -111,7 +111,9 @@ static NSString *rootPath_;
         NSError *err;
         [moc save:&err];
         [self.caches removeObjectForKey:cacheName];
+        return YES;
     }
+    return NO;
 }
 
 -(BOOL)hasCacheWithName:(NSString *)cacheName
@@ -146,7 +148,7 @@ static NSMutableDictionary *cacheStorageMap;
 -(id) init
 {
     if (self = [super init]) {
-        
+
     }
     return self;
 }
@@ -256,7 +258,7 @@ static NSMutableDictionary *cacheStorageMap;
     if (moc == nil) {
         NSManagedObjectModel *model = [ServiceWorkerCacheApi createManagedObjectModel];
         NSPersistentStoreCoordinator *psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
-        
+
         NSError *err;
         NSFileManager *fm = [NSFileManager defaultManager];
         NSURL *cacheDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
@@ -370,7 +372,7 @@ static NSMutableDictionary *cacheStorageMap;
         } else {
             urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
         }
-        
+
         // Convert the response into a ServiceWorkerResponse.
         ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromJSValue:response];
         [cache putRequest:urlRequest andResponse:serviceWorkerResponse inContext:moc];
@@ -414,43 +416,40 @@ static NSMutableDictionary *cacheStorageMap;
 
     // CacheStorage functions.
 
-    // Resolve with nothing.
-    context[@"openCache"] = ^(JSValue *cacheName, JSValue *resolve) {
+    // Resolve with a boolean.
+    context[@"cachesHas"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
 
-        // Get or create the specified cache.
-        [cacheStorage cacheWithName:[cacheName toString]];
-
-        // Resolve!
-        [resolve callWithArguments:@[[NSNull null]]];
-    };
-
-    // Resolve with boolean.
-    context[@"hasCache"] = ^(JSValue *cacheName, JSValue *resolve) {
-        // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
-
-        // Get or create the specified cache.
+        // Check whether the specified cache exists.
         BOOL hasCache = [cacheStorage hasCacheWithName:[cacheName toString]];
 
         // Resolve!
         [resolve callWithArguments:@[[NSNumber numberWithBool:hasCache]]];
     };
 
-    // Resolve with nothing.
-    context[@"deleteCache"] = ^(JSValue *cacheName, JSValue *resolve) {
+    // Resolve with a boolean.
+    context[@"cachesDelete"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
 
         // Delete the specified cache.
-        [cacheStorage deleteCacheWithName:[cacheName toString]];
+        BOOL cacheDeleted = [cacheStorage deleteCacheWithName:[cacheName toString]];
 
         // Resolve!
-        [resolve callWithArguments:@[[NSNull null]]];
+        [resolve callWithArguments:@[[NSNumber numberWithBool:cacheDeleted]]];
+    };
+
+    // Resolve with a list of strings.
+    context[@"cachesKeys"] = ^(JSValue *resolve, JSValue *reject) {
+        // Retrieve the caches.
+        NSURL *scope = [NSURL URLWithString:@"/"];
+        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+
+        // Resolve!
+        [resolve callWithArguments:@[[cacheStorage.caches allKeys]]];
     };
 }
 

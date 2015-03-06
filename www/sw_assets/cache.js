@@ -70,7 +70,8 @@ Cache.prototype.keys = function(request, options) {
 
 
 CacheStorage = function() {
-    this.cacheNameList = [];
+    // TODO: Consider JS cache name caching solutions, such as a list of cache names and a flag for whether we have fetched from CoreData yet.
+    // Right now, all calls except `open` go to native.
     return this;
 };
 
@@ -83,50 +84,32 @@ CacheStorage.prototype.match = function(request, options) {
 };
 
 CacheStorage.prototype.has = function(cacheName) {
-  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
-    // Check if the cache name is in the list.
-    resolve(cacheNameList.indexOf(cacheName) >= 0);
+    // Check if the cache exists in native.
+    cachesHas(cacheName, resolve, reject);
   });
 };
 
 CacheStorage.prototype.open = function(cacheName) {
-  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
-    // Add to the list of cache names.
-    cacheNameList.push(cacheName);
-
-    // Create the cache in native and resolve the promise with a JS cache when done.
-    openCache(cacheName, function() {
-      resolve(new Cache(cacheName));
-    });
+    // Resolve the promise with a JS cache.
+    resolve(new Cache(cacheName));
   });
 };
 
 // This function returns a promise for a response.
 CacheStorage.prototype.delete = function(cacheName) {
-  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
-    // Remove from the list of cache names.
-    // Also, delete the cache in native and resolve the promise accordingly.
-    var index = cacheNameList.indexOf(cacheName);
-    if (index >= 0) {
-      cacheNameList.splice(index, 1);
-      deleteCache(cacheName, function() {
-        resolve(true);
-      });
-    } else {
-      resolve(false);
-    }
+    // Delete the cache in native.
+    cachesDelete(cacheName, resolve, reject);
   });
 };
 
 // This function returns a promise for a response.
 CacheStorage.prototype.keys = function() {
-  var cacheNameList = this.cacheNameList;
   return new Promise(function(resolve, reject) {
     // Resolve the promise with the cache name list.
-    resolve(cacheNameList);
+    cachesKeys(resolve, reject);
   });
 };
 
