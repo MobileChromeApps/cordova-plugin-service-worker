@@ -108,6 +108,9 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
 
+    // Initialize CoreData for the Cache API.
+    [ServiceWorkerCacheApi initializeStorage];
+
     self.workerWebView = [[UIWebView alloc] init]; // Headless
     [self.viewController.view addSubview:self.workerWebView];
     [self.workerWebView setDelegate:self];

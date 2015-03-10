@@ -263,6 +263,7 @@ static NSMutableDictionary *cacheStorageMap;
         NSFileManager *fm = [NSFileManager defaultManager];
         NSURL *documentsDirectoryURL = [fm URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:&err];
         NSURL *cacheDirectoryURL = [documentsDirectoryURL URLByAppendingPathComponent:@"CacheData"];
+        [fm createDirectoryAtURL:cacheDirectoryURL withIntermediateDirectories:YES attributes:nil error:&err];
         NSURL *storeURL = [cacheDirectoryURL URLByAppendingPathComponent:@"swcache.db"];
 
         if (![fm fileExistsAtPath:[storeURL path]]) {
@@ -271,8 +272,6 @@ static NSMutableDictionary *cacheStorageMap;
             BOOL cacheDataIsDirectory;
             if ([fm fileExistsAtPath:initialDataPath isDirectory:&cacheDataIsDirectory]) {
                 if (cacheDataIsDirectory) {
-                    [fm createDirectoryAtURL:cacheDirectoryURL withIntermediateDirectories:YES attributes:nil error:&err];
-
                     NSURL *initialDataURL = [NSURL fileURLWithPath:initialDataPath isDirectory:YES];
                     NSLog(@"Copying Initial Cache.");
                     NSArray *fileURLs = [fm contentsOfDirectoryAtURL:initialDataURL includingPropertiesForKeys:nil options:0 error:&err];
