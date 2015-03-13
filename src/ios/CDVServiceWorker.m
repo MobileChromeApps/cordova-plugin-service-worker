@@ -316,7 +316,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     // `postMessage` serializes the message using kamino.js and passes it here.
     self.context[@"postMessageInternal"] = ^(JSValue *serializedMessage) {
         NSString *postMessageCode = [NSString stringWithFormat:@"window.postMessage(Kamino.parse('%@'), '*')", [serializedMessage toString]];
-        [weakSelf.webView stringByEvaluatingJavaScriptFromString:postMessageCode];
+        [self.webView performSelectorOnMainThread:@selector(stringByEvaluatingJavaScriptFromString:) withObject:postMessageCode waitUntilDone:NO];
     };
 
     // Install cache API JS methods
