@@ -45,8 +45,17 @@
     return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
 }
 
++ (ServiceWorkerResponse *)responseFromDictionary:(NSDictionary *)dictionary
+{
+    NSString *url = dictionary[@"url"];
+    NSString *body = dictionary[@"body"];
+    NSNumber *status = dictionary[@"status"];
+    NSDictionary *headers = dictionary[@"headers"];
+    return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
+}
+
 - (NSDictionary *)toDictionary {
-    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status, self.headers] forKeys:@[@"url", @"body", @"status", @"headers"]];
+    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status, self.headers ? self.headers : [NSDictionary new]] forKeys:@[@"url", @"body", @"status", @"headers"]];
 }
 
 - (void)encodeWithCoder:(NSCoder *)aCoder

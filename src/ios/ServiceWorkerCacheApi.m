@@ -255,6 +255,9 @@ static NSMutableDictionary *cacheStorageMap;
 
 +(BOOL)initializeStorage
 {
+    NSBundle* mainBundle = [NSBundle mainBundle];
+    rootPath_ = [[NSURL fileURLWithPath:[mainBundle pathForResource:@"www" ofType:@"" inDirectory:@""]] absoluteString];
+
     if (moc == nil) {
         NSManagedObjectModel *model = [ServiceWorkerCacheApi createManagedObjectModel];
         NSPersistentStoreCoordinator *psc = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:model];
@@ -298,8 +301,67 @@ static NSMutableDictionary *cacheStorageMap;
         }
         moc = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
         moc.persistentStoreCoordinator = psc;
+
+        // Pre-populate the cache with assets from www/.
+        [ServiceWorkerCacheApi prepopulateCache];
     }
+
     return YES;
+}
+
++(void)prepopulateCache
+{
+    NSFileManager *fileManager = [[NSFileManager alloc] init];
+    NSString *wwwDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www"];
+    NSURL *wwwDirectoryUrl = [NSURL URLWithString:wwwDirectoryPath];
+    NSArray *keys = [NSArray arrayWithObject:NSURLIsDirectoryKey];
+
+    NSDirectoryEnumerator *enumerator = [fileManager
+        enumeratorAtURL:wwwDirectoryUrl
+        includingPropertiesForKeys:keys
+        options:0
+        errorHandler:^(NSURL *url, NSError *error) {
+            // Handle the error.
+            // Return YES if the enumeration should continue after the error.
+            return YES;
+        }
+    ];
+
+    // TODO: Prevent caching of sw_assets?
+    for (NSURL *url in enumerator) {
+        NSError *error;
+        NSNumber *isDirectory = nil;
+        if (![url getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:&error]) {
+            // Handle error.
+        } else if (![isDirectory boolValue]) {
+            [ServiceWorkerCacheApi addToCache:url];
+        }
+    }
+}
+
++(void)addToCache:(NSURL *)url
+{
+    // Create an NSURLRequest.
+    NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
+
+    // Ensure we're fetching purely.
+    [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:urlRequest];
+
+    // Create a connection and send the request.
+    FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
+    delegate.resolve = ^(NSDictionary *response) {
+        // Get or create the specified cache.
+        NSURL *scope = [NSURL URLWithString:@"/"];
+        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCache *cache = [cacheStorage cacheWithName:@"BundledAssets"];
+
+        // Convert the response dictionary into a ServiceWorkerResponse.
+        ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromDictionary:response];
+
+        // Put the request and response in the cache.
+        [cache putRequest:urlRequest andResponse:serviceWorkerResponse inContext:moc];
+    };
+    [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
 }
 
 +(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope
@@ -319,10 +381,6 @@ static NSMutableDictionary *cacheStorageMap;
 
 +(void)defineFunctionsInContext:(JSContext *)context
 {
-    //TODO: Move this somewhere much better
-    NSBundle* mainBundle = [NSBundle mainBundle];
-    rootPath_ = [[NSURL fileURLWithPath:[mainBundle pathForResource:@"www" ofType:@"" inDirectory:@""]] absoluteString];
-
     // Cache functions.
 
     // Resolve with a response.
@@ -355,24 +413,6 @@ static NSMutableDictionary *cacheStorageMap;
     // Resolve with a list of responses.
     context[@"cacheMatchAll"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
 
-    };
-
-    // Resolve with nothing.
-    context[@"cacheAdd"] = ^(JSValue *cacheName, JSValue *request, JSValue *resolve, JSValue *reject) {
-        // Convert the given request into an NSURLRequest.
-        NSMutableURLRequest *urlRequest;
-        if ([request isString]) {
-            urlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url" : [request toString]}];
-        } else {
-            urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
-        }
-        [NSURLProtocol setProperty:@YES forKey:@"PureFetch" inRequest:urlRequest];
-
-        // Create a connection and send the request.
-        FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
-        delegate.resolve = resolve;
-        delegate.reject = reject;
-        [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
     };
 
     // Resolve with nothing.

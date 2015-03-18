@@ -27,6 +27,7 @@
 @property (nonatomic, strong) NSDictionary *headers;
 
 + (ServiceWorkerResponse *)responseFromJSValue:(JSValue *)value;
++ (ServiceWorkerResponse *)responseFromDictionary:(NSDictionary *)dictionary;
 - (NSDictionary *)toDictionary;
 
 @end

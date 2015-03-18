@@ -54,7 +54,7 @@
 
     // Convert the response to a dictionary and send it to the promise resolver.
     NSDictionary *responseDictionary = [response toDictionary];
-    [self.resolve callWithArguments:@[responseDictionary]];
+    self.resolve(responseDictionary);
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {

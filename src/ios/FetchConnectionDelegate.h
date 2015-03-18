@@ -22,7 +22,8 @@
 @interface FetchConnectionDelegate : NSObject <NSURLConnectionDelegate>
 
 @property (nonatomic, retain) NSMutableData *responseData;
-@property (nonatomic, retain) JSValue *resolve;
-@property (nonatomic, retain) JSValue *reject;
+@property (nonatomic, copy) void (^resolve)(NSDictionary *);
+@property (nonatomic, copy) void (^reject)(NSString *);
 
 @end
+
