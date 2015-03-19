@@ -355,11 +355,14 @@ static NSMutableDictionary *cacheStorageMap;
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:@"BundledAssets"];
 
+        // Create a URL request using a relative path.
+        NSMutableURLRequest *shortUrlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url": [url absoluteString]}];
+
         // Convert the response dictionary into a ServiceWorkerResponse.
         ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromDictionary:response];
 
         // Put the request and response in the cache.
-        [cache putRequest:urlRequest andResponse:serviceWorkerResponse inContext:moc];
+        [cache putRequest:shortUrlRequest andResponse:serviceWorkerResponse inContext:moc];
     };
     [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
 }
