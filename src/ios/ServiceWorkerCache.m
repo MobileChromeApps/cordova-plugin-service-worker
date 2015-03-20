@@ -55,9 +55,9 @@
     NSPredicate *predicate;
     
     if (includesQuery) {
-        predicate = [NSPredicate predicateWithFormat:@"(url == %@) AND (query == %@)", [self urlWithoutQueryForUrl:url], url.query];
+        predicate = [NSPredicate predicateWithFormat:@"(cache == %@) AND (url == %@) AND (query == %@)", self, [self urlWithoutQueryForUrl:url], url.query];
     } else {
-        predicate = [NSPredicate predicateWithFormat:@"(url == %@)", [self urlWithoutQueryForUrl:url]];
+        predicate = [NSPredicate predicateWithFormat:@"(cache == %@) AND (url == %@)", self, [self urlWithoutQueryForUrl:url]];
     }
     [fetchRequest setPredicate:predicate];
 
