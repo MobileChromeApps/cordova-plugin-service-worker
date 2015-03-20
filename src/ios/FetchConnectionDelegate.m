@@ -42,19 +42,15 @@
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    // Convert the body to base64.
-    NSString *encodedBody = [self.responseData base64Encoding];
-
     // Create the response object.
     ServiceWorkerResponse *response = [ServiceWorkerResponse new];
     response.url = [[[connection currentRequest] URL] absoluteString];
-    response.body = encodedBody;
+    response.body = self.responseData;
     response.status = @200;
     response.headers = [[connection currentRequest] allHTTPHeaderFields];
 
     // Convert the response to a dictionary and send it to the promise resolver.
-    NSDictionary *responseDictionary = [response toDictionary];
-    self.resolve(responseDictionary);
+    self.resolve(response);
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {

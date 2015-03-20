@@ -18,11 +18,12 @@
  */
 
 #import <JavaScriptCore/JavaScriptCore.h>
+#import "ServiceWorkerResponse.h"
 
 @interface FetchConnectionDelegate : NSObject <NSURLConnectionDelegate>
 
 @property (nonatomic, retain) NSMutableData *responseData;
-@property (nonatomic, copy) void (^resolve)(NSDictionary *);
+@property (nonatomic, copy) void (^resolve)(ServiceWorkerResponse *);
 @property (nonatomic, copy) void (^reject)(NSString *);
 
 @end

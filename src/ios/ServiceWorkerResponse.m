@@ -26,7 +26,7 @@
 @synthesize body = _body;
 @synthesize status = _status;
 
-- (id) initWithUrl:(NSString *)url body:(NSString *)body status:(NSNumber *)status headers:(NSDictionary *)headers {
+- (id) initWithUrl:(NSString *)url body:(NSData *)body status:(NSNumber *)status headers:(NSDictionary *)headers {
     if (self = [super init]) {
         _url = url;
         _body = body;
@@ -40,23 +40,27 @@
 {
     NSString *url = [jvalue[@"url"] toString];
     NSString *body = [jvalue[@"body"] toString];
+    NSData *decodedBody = [[NSData alloc] initWithBase64EncodedString:body options:0];
     NSNumber *status = [jvalue[@"status"] toNumber];
     NSDictionary *headers = [jvalue[@"headers"][@"headerDict"] toDictionary];
-    return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
+    return [[ServiceWorkerResponse alloc] initWithUrl:url body:decodedBody status:status headers:headers];
 }
 
 + (ServiceWorkerResponse *)responseFromDictionary:(NSDictionary *)dictionary
 {
     NSString *url = dictionary[@"url"];
-    NSString *body = dictionary[@"body"];
+    NSData *body = dictionary[@"body"];
     NSNumber *status = dictionary[@"status"];
     NSDictionary *headers = dictionary[@"headers"];
     return [[ServiceWorkerResponse alloc] initWithUrl:url body:body status:status headers:headers];
 }
 
 - (NSDictionary *)toDictionary {
-    return [NSDictionary dictionaryWithObjects:@[self.url, self.body, self.status, self.headers ? self.headers : [NSDictionary new]] forKeys:@[@"url", @"body", @"status", @"headers"]];
+    // Convert the body to base64.
+    NSString *encodedBody = [self.body base64Encoding];
+    return [NSDictionary dictionaryWithObjects:@[self.url, encodedBody, self.status, self.headers ? self.headers : [NSDictionary new]] forKeys:@[@"url", @"body", @"status", @"headers"]];
 }
+
 
 - (void)encodeWithCoder:(NSCoder *)aCoder
 {

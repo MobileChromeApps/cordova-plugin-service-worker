@@ -365,7 +365,7 @@ static NSMutableDictionary *cacheStorageMap;
 
     // Create a connection and send the request.
     FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
-    delegate.resolve = ^(NSDictionary *response) {
+    delegate.resolve = ^(ServiceWorkerResponse *response) {
         // Get or create the specified cache.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
@@ -374,11 +374,8 @@ static NSMutableDictionary *cacheStorageMap;
         // Create a URL request using a relative path.
         NSMutableURLRequest *shortUrlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url": [url absoluteString]}];
 
-        // Convert the response dictionary into a ServiceWorkerResponse.
-        ServiceWorkerResponse *serviceWorkerResponse = [ServiceWorkerResponse responseFromDictionary:response];
-
         // Put the request and response in the cache.
-        [cache putRequest:shortUrlRequest andResponse:serviceWorkerResponse inContext:moc];
+        [cache putRequest:shortUrlRequest andResponse:response inContext:moc];
     };
     [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
 }

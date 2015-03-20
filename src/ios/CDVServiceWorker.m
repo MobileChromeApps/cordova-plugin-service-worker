@@ -307,8 +307,8 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
         // Create a connection and send the request.
         FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
-        delegate.resolve = ^(NSDictionary *response) {
-            [resolve callWithArguments:@[response]];
+        delegate.resolve = ^(ServiceWorkerResponse *response) {
+            [resolve callWithArguments:@[[response toDictionary]]];
         };
         delegate.reject = ^(NSString *error) {
             [reject callWithArguments:@[error]];
