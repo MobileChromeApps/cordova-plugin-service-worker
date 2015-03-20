@@ -23,6 +23,9 @@
 #import "ServiceWorkerCacheApi.h"
 #import "ServiceWorkerResponse.h"
 
+NSString * const CORDOVA_ASSETS_CACHE_NAME = @"CordovaAssets";
+NSString * const CORDOVA_ASSETS_VERSION_KEY = @"CordovaAssetsVersion";
+
 static NSManagedObjectContext *moc;
 static NSString *rootPath_;
 
@@ -302,14 +305,27 @@ static NSMutableDictionary *cacheStorageMap;
         moc = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
         moc.persistentStoreCoordinator = psc;
 
-        // Pre-populate the cache with assets from www/.
-        [ServiceWorkerCacheApi prepopulateCache];
+        // If this is the first run ever, or the app has been updated, populate the Cordova assets cache with assets from www/.
+        NSString *cordovaAssetsVersion = [[NSUserDefaults standardUserDefaults] stringForKey:CORDOVA_ASSETS_VERSION_KEY];
+        NSString *currentAppVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
+        if (cordovaAssetsVersion == nil || ![cordovaAssetsVersion isEqualToString:currentAppVersion]) {
+            // Delete the existing cache (if it exists).
+            NSURL *scope = [NSURL URLWithString:@"/"];
+            ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+            [cacheStorage deleteCacheWithName:CORDOVA_ASSETS_CACHE_NAME];
+
+            // Populate the cache.
+            [ServiceWorkerCacheApi populateCordovaAssetsCache];
+
+            // Store the app version.
+            [[NSUserDefaults standardUserDefaults] setObject:currentAppVersion forKey:CORDOVA_ASSETS_VERSION_KEY];
+        }
     }
 
     return YES;
 }
 
-+(void)prepopulateCache
++(void)populateCordovaAssetsCache
 {
     NSFileManager *fileManager = [[NSFileManager alloc] init];
     NSString *wwwDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www"];
@@ -334,12 +350,12 @@ static NSMutableDictionary *cacheStorageMap;
         if (![url getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:&error]) {
             // Handle error.
         } else if (![isDirectory boolValue]) {
-            [ServiceWorkerCacheApi addToCache:url];
+            [ServiceWorkerCacheApi addToCordovaAssetsCache:url];
         }
     }
 }
 
-+(void)addToCache:(NSURL *)url
++(void)addToCordovaAssetsCache:(NSURL *)url
 {
     // Create an NSURLRequest.
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
@@ -353,7 +369,7 @@ static NSMutableDictionary *cacheStorageMap;
         // Get or create the specified cache.
         NSURL *scope = [NSURL URLWithString:@"/"];
         ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
-        ServiceWorkerCache *cache = [cacheStorage cacheWithName:@"BundledAssets"];
+        ServiceWorkerCache *cache = [cacheStorage cacheWithName:CORDOVA_ASSETS_CACHE_NAME];
 
         // Create a URL request using a relative path.
         NSMutableURLRequest *shortUrlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url": [url absoluteString]}];

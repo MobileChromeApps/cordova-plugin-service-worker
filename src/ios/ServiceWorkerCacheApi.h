@@ -21,6 +21,7 @@
 #import "ServiceWorkerResponse.h"
 #import "ServiceWorkerCache.h"
 
+extern NSString * const SERVICE_WORKER;
 
 @interface ServiceWorkerCacheStorage : NSObject { }
 
