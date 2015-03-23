@@ -6,16 +6,33 @@ Cache = function(cacheName) {
 Cache.prototype.match = function(request, options) {
   var cacheName = this.name;
   return new Promise(function(resolve, reject) {
+    var encodeResponse = function(response) {
+      if (response) {
+        response = new Response(window.atob(response.body), response.url, response.status, response.headers);
+      }
+      return resolve(response);
+    };
     // Call the native match function.
-    cacheMatch(cacheName, request, options, resolve, reject);
+    cacheMatch(cacheName, request, options, encodeResponse, reject);
   });
 };
 
 Cache.prototype.matchAll = function(request, options) {
   var cacheName = this.name;
   return new Promise(function(resolve, reject) {
+    var encodeResponses = function(responses) {
+      if (responses instanceof Array) {
+        var encodedResponses = [];
+        for (var i=0; i < responses.length; ++i) {
+          var response = responses[i];
+          encodedReponses.push(new Response(window.atob(response.body), response.url, response.status, response.headers));
+        }
+        return resolve(encodedResponses);
+      }
+      return resolve(responses);
+    };
     // Call the native matchAll function.
-    cacheMatchAll(cacheName, request, options, resolve, reject);
+    cacheMatchAll(cacheName, request, options, encodeResponses, reject);
   });
 };
 
@@ -42,7 +59,7 @@ Cache.prototype.put = function(request, response) {
   var cacheName = this.name;
   return new Promise(function(resolve, reject) {
     // Call the native put function.
-    cachePut(cacheName, request, response, resolve, reject);
+    cachePut(cacheName, request, response.toDict(), resolve, reject);
   });
 };
 

@@ -98,6 +98,13 @@ Response.prototype.clone = function() {
   return new Response(this.body, this.url, this.status, this.headers);
 }
 
+Response.prototype.toDict = function() {
+  return {"body": window.btoa(this.body),
+          "url": this.url,
+          "status": this.status,
+          "headers": this.headers};
+}
+
 // This function returns a promise with a response for fetching the given resource.
 function fetch(input) {
   // Assume the passed in input is a resource URL string.
