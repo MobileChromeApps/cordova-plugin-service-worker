@@ -296,8 +296,13 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     self.context[@"handleTrueFetch"] = ^(JSValue *method, JSValue *resourceUrl, JSValue *headers, JSValue *resolve, JSValue *reject) {
+        NSString *resourceUrlString = [resourceUrl toString];
+        if (![[resourceUrl toString] containsString:@"://"]) {
+            resourceUrlString = [NSString stringWithFormat:@"file://%@/www/%@", [[NSBundle mainBundle] resourcePath], resourceUrlString];
+        }
+
         // Create the request.
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[resourceUrl toString]]];
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:resourceUrlString]];
         [request setHTTPMethod:[method toString]];
         NSDictionary *headerDictionary = [headers toDictionary];
         [headerDictionary enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL* stop) {
