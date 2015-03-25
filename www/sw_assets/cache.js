@@ -99,8 +99,14 @@ CacheStorage = function() {
 // This function returns a promise for a response.
 CacheStorage.prototype.match = function(request, options) {
   return new Promise(function(resolve, reject) {
+    var encodeResponse = function(response) {
+      if (response) {
+        response = new Response(window.atob(response.body), response.url, response.status, response.headers);
+      }
+      return resolve(response);
+    };
     // Call the native match function.
-    cacheMatch(options && options.cacheName, request, options, resolve, reject);
+    cacheMatch(options && options.cacheName, request, options, encodeResponse, reject);
   });
 };
 
