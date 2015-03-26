@@ -26,6 +26,7 @@ FetchEvent.prototype.respondWith = function(response) {
 
   // Send the response to native.
   var convertAndHandle = function(response) {
+    response.body = window.btoa(response.body);
     handleFetchResponse(requestId, response);
   }
 
