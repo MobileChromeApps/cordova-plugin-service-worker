@@ -28,7 +28,8 @@
 
 static bool isServiceWorkerActive = NO;
 
-NSString * const SERVICE_WORKER = @"service_worker";
+NSString * const SERVICE_WORKER = @"serviceworker";
+NSString * const SERVICE_WORKER_CACHE_CORDOVA_ASSETS = @"cachecordovaassets";
 NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
 NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
 NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM = @"ServiceWorkerScriptChecksum";
@@ -51,6 +52,7 @@ NSString * const SERVICE_WORKER_KEY_SCRIPT_URL = @"scriptURL";
 @synthesize requestDelegates = _requestDelegates;
 @synthesize requestQueue = _requestQueue;
 @synthesize serviceWorkerScriptFilename = _serviceWorkerScriptFilename;
+@synthesize cacheApi = _cacheApi;
 
 - (NSString *)hashForString:(NSString *)string
 {
@@ -108,19 +110,24 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     [NSURLProtocol registerClass:[FetchInterceptorProtocol class]];
 
-    // Initialize CoreData for the Cache API.
-    [ServiceWorkerCacheApi initializeStorage];
-
-    self.workerWebView = [[UIWebView alloc] init]; // Headless
-    [self.viewController.view addSubview:self.workerWebView];
-    [self.workerWebView setDelegate:self];
-    [self.workerWebView loadHTMLString:@"<html><title>Service Worker Page</title></html>" baseURL:[NSURL fileURLWithPath:[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"GeneratedWorker.html" ] ]];
-
+    // Get the app settings.
+    BOOL cacheCordovaAssets = YES;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
         self.serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
+        NSObject *cacheCordovaAssetsObject = [settings objectForKey:SERVICE_WORKER_CACHE_CORDOVA_ASSETS];
+        cacheCordovaAssets = (cacheCordovaAssetsObject == nil) ? YES : [(NSString *)cacheCordovaAssetsObject boolValue];
     }
+
+    // Initialize CoreData for the Cache API.
+    self.cacheApi = [[ServiceWorkerCacheApi alloc] initWithCachedCordovaAssets:cacheCordovaAssets];
+    [self.cacheApi initializeStorage];
+
+    self.workerWebView = [[UIWebView alloc] init]; // Headless
+    [self.viewController.view addSubview:self.workerWebView];
+    [self.workerWebView setDelegate:self];
+    [self.workerWebView loadHTMLString:@"<html><title>Service Worker Page</title></html>" baseURL:[NSURL fileURLWithPath:[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"GeneratedWorker.html"]]];
 }
 
 # pragma mark ServiceWorker Functions
@@ -329,7 +336,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
     };
 
     // Install cache API JS methods
-    [ServiceWorkerCacheApi defineFunctionsInContext:self.context];
+    [self.cacheApi defineFunctionsInContext:self.context];
 
     // Load the required assets.
     [self loadServiceWorkerAssetsIntoContext];

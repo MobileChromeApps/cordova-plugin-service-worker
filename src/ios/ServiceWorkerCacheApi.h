@@ -37,9 +37,12 @@ extern NSString * const SERVICE_WORKER;
 
 @interface ServiceWorkerCacheApi : NSObject { }
 
-+(void)defineFunctionsInContext:(JSContext *)context;
-+(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope;
-+(BOOL)initializeStorage;
+-(id)initWithCachedCordovaAssets:(BOOL)cacheCordovaAssets;
+-(void)defineFunctionsInContext:(JSContext *)context;
+-(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope;
+-(BOOL)initializeStorage;
 
+@property (nonatomic, retain) NSMutableDictionary *cacheStorageMap;
+@property (nonatomic) BOOL cacheCordovaAssets;
 @end
 

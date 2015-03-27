@@ -19,8 +19,10 @@
 
 #import <Cordova/CDVPlugin.h>
 #import <JavaScriptCore/JSContext.h>
+#import "ServiceWorkerCacheApi.h"
 
 extern NSString * const SERVICE_WORKER;
+extern NSString * const SERVICE_WORKER_CACHE_CORDOVA_ASSETS;
 extern NSString * const SERVICE_WORKER_ACTIVATED;
 extern NSString * const SERVICE_WORKER_INSTALLED;
 extern NSString * const SERVICE_WORKER_SCRIPT_CHECKSUM;
@@ -46,6 +48,7 @@ extern NSString * const SERVICE_WORKER_KEY_SCRIPT_URL;
 @property (nonatomic, retain) NSMutableArray *requestQueue;
 @property (nonatomic, retain) NSDictionary *registration;
 @property (nonatomic, retain) NSString *serviceWorkerScriptFilename;
+@property (nonatomic, retain) ServiceWorkerCacheApi *cacheApi;
 
 @end
 

@@ -146,12 +146,13 @@ static NSString *rootPath_;
 
 @implementation ServiceWorkerCacheApi
 
-static NSMutableDictionary *cacheStorageMap;
+@synthesize cacheStorageMap = _cacheStorageMap;
+@synthesize cacheCordovaAssets = _cacheCordovaAssets;
 
--(id) init
+-(id)initWithCachedCordovaAssets:(BOOL)cacheCordovaAssets
 {
     if (self = [super init]) {
-
+        self.cacheCordovaAssets = cacheCordovaAssets;
     }
     return self;
 }
@@ -256,7 +257,7 @@ static NSMutableDictionary *cacheStorageMap;
     return model;
 }
 
-+(BOOL)initializeStorage
+-(BOOL)initializeStorage
 {
     NSBundle* mainBundle = [NSBundle mainBundle];
     rootPath_ = [[NSURL fileURLWithPath:[mainBundle pathForResource:@"www" ofType:@"" inDirectory:@""]] absoluteString];
@@ -306,26 +307,28 @@ static NSMutableDictionary *cacheStorageMap;
         moc.persistentStoreCoordinator = psc;
 
         // If this is the first run ever, or the app has been updated, populate the Cordova assets cache with assets from www/.
-        NSString *cordovaAssetsVersion = [[NSUserDefaults standardUserDefaults] stringForKey:CORDOVA_ASSETS_VERSION_KEY];
-        NSString *currentAppVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
-        if (cordovaAssetsVersion == nil || ![cordovaAssetsVersion isEqualToString:currentAppVersion]) {
-            // Delete the existing cache (if it exists).
-            NSURL *scope = [NSURL URLWithString:@"/"];
-            ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
-            [cacheStorage deleteCacheWithName:CORDOVA_ASSETS_CACHE_NAME];
+        if (self.cacheCordovaAssets) {
+            NSString *cordovaAssetsVersion = [[NSUserDefaults standardUserDefaults] stringForKey:CORDOVA_ASSETS_VERSION_KEY];
+            NSString *currentAppVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
+            if (cordovaAssetsVersion == nil || ![cordovaAssetsVersion isEqualToString:currentAppVersion]) {
+                // Delete the existing cache (if it exists).
+                NSURL *scope = [NSURL URLWithString:@"/"];
+                ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
+                [cacheStorage deleteCacheWithName:CORDOVA_ASSETS_CACHE_NAME];
 
-            // Populate the cache.
-            [ServiceWorkerCacheApi populateCordovaAssetsCache];
+                // Populate the cache.
+                [self populateCordovaAssetsCache];
 
-            // Store the app version.
-            [[NSUserDefaults standardUserDefaults] setObject:currentAppVersion forKey:CORDOVA_ASSETS_VERSION_KEY];
+                // Store the app version.
+                [[NSUserDefaults standardUserDefaults] setObject:currentAppVersion forKey:CORDOVA_ASSETS_VERSION_KEY];
+            }
         }
     }
 
     return YES;
 }
 
-+(void)populateCordovaAssetsCache
+-(void)populateCordovaAssetsCache
 {
     NSFileManager *fileManager = [[NSFileManager alloc] init];
     NSString *wwwDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www"];
@@ -350,12 +353,12 @@ static NSMutableDictionary *cacheStorageMap;
         if (![url getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:&error]) {
             // Handle error.
         } else if (![isDirectory boolValue]) {
-            [ServiceWorkerCacheApi addToCordovaAssetsCache:url];
+            [self addToCordovaAssetsCache:url];
         }
     }
 }
 
-+(void)addToCordovaAssetsCache:(NSURL *)url
+-(void)addToCordovaAssetsCache:(NSURL *)url
 {
     // Create an NSURLRequest.
     NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
@@ -368,7 +371,7 @@ static NSMutableDictionary *cacheStorageMap;
     delegate.resolve = ^(ServiceWorkerResponse *response) {
         // Get or create the specified cache.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:CORDOVA_ASSETS_CACHE_NAME];
 
         // Create a URL request using a relative path.
@@ -380,22 +383,22 @@ static NSMutableDictionary *cacheStorageMap;
     [NSURLConnection connectionWithRequest:urlRequest delegate:delegate];
 }
 
-+(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope
+-(ServiceWorkerCacheStorage *)cacheStorageForScope:(NSURL *)scope
 {
-    if (cacheStorageMap == nil) {
-        cacheStorageMap = [[NSMutableDictionary alloc] initWithCapacity:1];
+    if (self.cacheStorageMap == nil) {
+        self.cacheStorageMap = [[NSMutableDictionary alloc] initWithCapacity:1];
     }
-    [ServiceWorkerCacheApi initializeStorage];
-    ServiceWorkerCacheStorage *cachesForScope = (ServiceWorkerCacheStorage *)[cacheStorageMap objectForKey:scope];
+    [self initializeStorage];
+    ServiceWorkerCacheStorage *cachesForScope = (ServiceWorkerCacheStorage *)[self.cacheStorageMap objectForKey:scope];
     if (cachesForScope == nil) {
         // TODO: Init this properly, using `initWithEntity:insertIntoManagedObjectContext:`.
         cachesForScope = [[ServiceWorkerCacheStorage alloc] initWithContext:moc];
-        [cacheStorageMap setObject:cachesForScope forKey:scope];
+        [self.cacheStorageMap setObject:cachesForScope forKey:scope];
     }
     return cachesForScope;
 }
 
-+(void)defineFunctionsInContext:(JSContext *)context
+-(void)defineFunctionsInContext:(JSContext *)context
 {
     // Cache functions.
 
@@ -403,7 +406,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cacheMatch"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Convert the given request into an NSURLRequest.
         NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
@@ -435,7 +438,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cachePut"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:[cacheName toString]];
@@ -460,7 +463,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cacheDelete"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
         ServiceWorkerCache *cache =[cacheStorage cacheWithName:[cacheName toString]];
@@ -479,7 +482,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cacheKeys"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
         ServiceWorkerCache *cache =[cacheStorage cacheWithName:[cacheName toString]];
@@ -509,7 +512,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cachesHas"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Check whether the specified cache exists.
         BOOL hasCache = [cacheStorage hasCacheWithName:[cacheName toString]];
@@ -522,7 +525,7 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cachesDelete"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Delete the specified cache.
         BOOL cacheDeleted = [cacheStorage deleteCacheWithName:[cacheName toString]];
@@ -535,20 +538,20 @@ static NSMutableDictionary *cacheStorageMap;
     context[@"cachesKeys"] = ^(JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
         NSURL *scope = [NSURL URLWithString:@"/"];
-        ServiceWorkerCacheStorage *cacheStorage = [ServiceWorkerCacheApi cacheStorageForScope:scope];
+        ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Resolve!
         [resolve callWithArguments:@[[cacheStorage.caches allKeys]]];
     };
 }
 
-+ (NSMutableURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
++(NSMutableURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
 {
     NSDictionary *requestDictionary = [jsRequest toDictionary];
     return [ServiceWorkerCacheApi nativeRequestFromDictionary:requestDictionary];
 }
 
-+ (NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
++(NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
 {
     NSString *urlString = requestDictionary[@"url"];
     if ([urlString hasPrefix:rootPath_]) {
