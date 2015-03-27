@@ -6,7 +6,7 @@ This plugin adds [ServiceWorker](https://github.com/slightlyoff/ServiceWorker) s
 2. Add the following preference to your config.xml file:
 
    ```
-   <preference name="service_worker" value="sw.js" />
+   <preference name="ServiceWorker" value="sw.js" />
    ```
 
 That's it!  Your calls to the ServiceWorker API should now work.
