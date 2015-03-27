@@ -148,10 +148,16 @@ static NSString *rootPath_;
 
 @synthesize cacheStorageMap = _cacheStorageMap;
 @synthesize cacheCordovaAssets = _cacheCordovaAssets;
+@synthesize absoluteScope = _absoluteScope;
 
--(id)initWithCachedCordovaAssets:(BOOL)cacheCordovaAssets
+-(id)initWithScope:(NSString *)scope cacheCordovaAssets:(BOOL)cacheCordovaAssets
 {
     if (self = [super init]) {
+        if (scope == nil) {
+            self.absoluteScope = @"/";
+        } else {
+            self.absoluteScope = scope;
+        }
         self.cacheCordovaAssets = cacheCordovaAssets;
     }
     return self;
@@ -312,7 +318,7 @@ static NSString *rootPath_;
             NSString *currentAppVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
             if (cordovaAssetsVersion == nil || ![cordovaAssetsVersion isEqualToString:currentAppVersion]) {
                 // Delete the existing cache (if it exists).
-                NSURL *scope = [NSURL URLWithString:@"/"];
+                NSURL *scope = [NSURL URLWithString:self.absoluteScope];
                 ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
                 [cacheStorage deleteCacheWithName:CORDOVA_ASSETS_CACHE_NAME];
 
@@ -370,12 +376,13 @@ static NSString *rootPath_;
     FetchConnectionDelegate *delegate = [FetchConnectionDelegate new];
     delegate.resolve = ^(ServiceWorkerResponse *response) {
         // Get or create the specified cache.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
         ServiceWorkerCache *cache = [cacheStorage cacheWithName:CORDOVA_ASSETS_CACHE_NAME];
 
         // Create a URL request using a relative path.
-        NSMutableURLRequest *shortUrlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url": [url absoluteString]}];
+        NSMutableURLRequest *shortUrlRequest = [self nativeRequestFromDictionary:@{@"url": [url absoluteString]}];
+NSLog(@"Using short url: %@", shortUrlRequest.URL);
 
         // Put the request and response in the cache.
         [cache putRequest:shortUrlRequest andResponse:response inContext:moc];
@@ -405,11 +412,11 @@ static NSString *rootPath_;
     // Resolve with a response.
     context[@"cacheMatch"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Convert the given request into an NSURLRequest.
-        NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+        NSURLRequest *urlRequest = [self nativeRequestFromJsRequest:request];
 
         // Check for a match in the cache.
         // TODO: Deal with multiple matches.
@@ -437,7 +444,7 @@ static NSString *rootPath_;
     // Resolve with nothing.
     context[@"cachePut"] = ^(JSValue *cacheName, JSValue *request, JSValue *response, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
@@ -446,9 +453,9 @@ static NSString *rootPath_;
         // Convert the given request into an NSURLRequest.
         NSMutableURLRequest *urlRequest;
         if ([request isString]) {
-            urlRequest = [ServiceWorkerCacheApi nativeRequestFromDictionary:@{@"url" : [request toString]}];
+            urlRequest = [self nativeRequestFromDictionary:@{@"url" : [request toString]}];
         } else {
-            urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+            urlRequest = [self nativeRequestFromJsRequest:request];
         }
 
         // Convert the response into a ServiceWorkerResponse.
@@ -462,14 +469,14 @@ static NSString *rootPath_;
     // Resolve with a boolean.
     context[@"cacheDelete"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
         ServiceWorkerCache *cache =[cacheStorage cacheWithName:[cacheName toString]];
 
         // Convert the given request into an NSURLRequest.
-        NSURLRequest *urlRequest = [ServiceWorkerCacheApi nativeRequestFromJsRequest:request];
+        NSURLRequest *urlRequest = [self nativeRequestFromJsRequest:request];
 
         // Delete the request key from the cache.
         [cache deleteRequest:urlRequest fromContext:moc];
@@ -481,7 +488,7 @@ static NSString *rootPath_;
     // Resolve with a list of requests.
     context[@"cacheKeys"] = ^(JSValue *cacheName, JSValue *request, JSValue *options, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Get or create the specified cache.
@@ -511,7 +518,7 @@ static NSString *rootPath_;
     // Resolve with a boolean.
     context[@"cachesHas"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Check whether the specified cache exists.
@@ -524,7 +531,7 @@ static NSString *rootPath_;
     // Resolve with a boolean.
     context[@"cachesDelete"] = ^(JSValue *cacheName, JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Delete the specified cache.
@@ -537,7 +544,7 @@ static NSString *rootPath_;
     // Resolve with a list of strings.
     context[@"cachesKeys"] = ^(JSValue *resolve, JSValue *reject) {
         // Retrieve the caches.
-        NSURL *scope = [NSURL URLWithString:@"/"];
+        NSURL *scope = [NSURL URLWithString:self.absoluteScope];
         ServiceWorkerCacheStorage *cacheStorage = [self cacheStorageForScope:scope];
 
         // Resolve!
@@ -545,17 +552,17 @@ static NSString *rootPath_;
     };
 }
 
-+(NSMutableURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
+-(NSMutableURLRequest *)nativeRequestFromJsRequest:(JSValue *)jsRequest
 {
     NSDictionary *requestDictionary = [jsRequest toDictionary];
-    return [ServiceWorkerCacheApi nativeRequestFromDictionary:requestDictionary];
+    return [self nativeRequestFromDictionary:requestDictionary];
 }
 
-+(NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
+-(NSMutableURLRequest *)nativeRequestFromDictionary:(NSDictionary *)requestDictionary
 {
     NSString *urlString = requestDictionary[@"url"];
     if ([urlString hasPrefix:rootPath_]) {
-        urlString = [urlString substringFromIndex:[rootPath_ length]-1];
+        urlString = [NSString stringWithFormat:@"%@%@", self.absoluteScope, [urlString substringFromIndex:[rootPath_ length]]];
     }
     return [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
 }

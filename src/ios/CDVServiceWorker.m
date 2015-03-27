@@ -29,6 +29,7 @@
 static bool isServiceWorkerActive = NO;
 
 NSString * const SERVICE_WORKER = @"serviceworker";
+NSString * const SERVICE_WORKER_SCOPE = @"serviceworkerscope";
 NSString * const SERVICE_WORKER_CACHE_CORDOVA_ASSETS = @"cachecordovaassets";
 NSString * const SERVICE_WORKER_ACTIVATED = @"ServiceWorkerActivated";
 NSString * const SERVICE_WORKER_INSTALLED = @"ServiceWorkerInstalled";
@@ -112,16 +113,18 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
 
     // Get the app settings.
     BOOL cacheCordovaAssets = YES;
+    NSString *serviceWorkerScope;
     if ([[self viewController] isKindOfClass:[CDVViewController class]]) {
         CDVViewController *vc = (CDVViewController *)[self viewController];
         NSMutableDictionary *settings = [vc settings];
         self.serviceWorkerScriptFilename = [settings objectForKey:SERVICE_WORKER];
         NSObject *cacheCordovaAssetsObject = [settings objectForKey:SERVICE_WORKER_CACHE_CORDOVA_ASSETS];
+        serviceWorkerScope = [settings objectForKey:SERVICE_WORKER_SCOPE];
         cacheCordovaAssets = (cacheCordovaAssetsObject == nil) ? YES : [(NSString *)cacheCordovaAssetsObject boolValue];
     }
 
     // Initialize CoreData for the Cache API.
-    self.cacheApi = [[ServiceWorkerCacheApi alloc] initWithCachedCordovaAssets:cacheCordovaAssets];
+    self.cacheApi = [[ServiceWorkerCacheApi alloc] initWithScope:serviceWorkerScope cacheCordovaAssets:cacheCordovaAssets];
     [self.cacheApi initializeStorage];
 
     self.workerWebView = [[UIWebView alloc] init]; // Headless
