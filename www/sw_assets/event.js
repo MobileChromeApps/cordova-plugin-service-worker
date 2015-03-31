@@ -20,17 +20,17 @@ Event.prototype.preventDefault = function() {
 
 ExtendableEvent = function(type) {
   Event.call(this, type);
-  this.promises = null;
+  this._promises = null;
 };
 
 ExtendableEvent.prototype = Object.create(Event.prototype);
 ExtendableEvent.constructor = ExtendableEvent;
 
 ExtendableEvent.prototype.waitUntil = function(promise) {
-  if (this.promises === null) {
-    this.promises = [];
+  if (this._promises === null) {
+    this._promises = [];
   }
-  this.promises.push(promise);
+  this._promises.push(promise);
 };
 
 
@@ -128,8 +128,8 @@ FireInstallEvent = function() {
   var ev = new InstallEvent();
   var InstallFailed;
   dispatchEvent(ev);
-  if (ev.promises && ev.length) {
-    return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
+  if (ev._promises && ev.length) {
+    return Promise.all(ev._promises).then(null, function(err) { InstallFailed = true; });
   } else {
     return Promise.resolve();
   }
@@ -138,8 +138,8 @@ FireInstallEvent = function() {
 FireActivateEvent = function() {
   var ev = new ActivateEvent();
   dispatchEvent(ev);
-  if (ev.promises && ev.length) {
-    return Promise.all(ev.promises);
+  if (ev._promises && ev.length) {
+    return Promise.all(ev._promises);
   } else {
     return Promise.resolve();
   }
