@@ -1,4 +1,4 @@
-;EventQueue = {};
+EventQueue = {};
 var self=this;
 
 Event = function(type) {
@@ -10,7 +10,6 @@ Event = function(type) {
   this.canceled_ = false;
   this.initialized_ = false;
   this.dispatch_ = false;
-  return this;
 };
 
 Event.prototype.preventDefault = function() {
@@ -22,10 +21,10 @@ Event.prototype.preventDefault = function() {
 ExtendableEvent = function(type) {
   Event.call(this, type);
   this.promises = null;
-  return this;
 };
 
-ExtendableEvent.prototype = new Event();
+ExtendableEvent.prototype = Object.create(Event.prototype);
+ExtendableEvent.constructor = ExtendableEvent;
 
 ExtendableEvent.prototype.waitUntil = function(promise) {
   if (this.promises === null) {
@@ -113,21 +112,23 @@ Object.defineProperty(this, 'onfetch', {
 
 
 InstallEvent = function() {
+  ExtendableEvent.call(this, 'install');
   this.activeWorker = null;
-  return this;
 };
-InstallEvent.prototype = new ExtendableEvent('install');
+InstallEvent.prototype = Object.create(ExtendableEvent.prototype);
+InstallEvent.constructor = InstallEvent;
 
 ActivateEvent = function() {
-  return this;
+  ExtendableEvent.call(this, 'activate');
 };
-ActivateEvent.prototype = new ExtendableEvent('activate');
+ActivateEvent.prototype = Object.create(ExtendableEvent.prototype);
+ActivateEvent.constructor = ActivateEvent;
 
 FireInstallEvent = function() {
   var ev = new InstallEvent();
   var InstallFailed;
   dispatchEvent(ev);
-  if (ev.promises instanceof Array) {
+  if (ev.promises && ev.length) {
     return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
   } else {
     return Promise.resolve();
@@ -137,7 +138,7 @@ FireInstallEvent = function() {
 FireActivateEvent = function() {
   var ev = new ActivateEvent();
   dispatchEvent(ev);
-  if (ev.promises instanceof Array) {
+  if (ev.promises && ev.length) {
     return Promise.all(ev.promises);
   } else {
     return Promise.resolve();
