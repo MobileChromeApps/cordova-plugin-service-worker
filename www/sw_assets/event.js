@@ -128,7 +128,7 @@ FireInstallEvent = function() {
   var ev = new InstallEvent();
   var InstallFailed;
   dispatchEvent(ev);
-  if (ev._promises && ev.length) {
+  if (Array.isArray(ev._promises)) {
     return Promise.all(ev._promises).then(null, function(err) { InstallFailed = true; });
   } else {
     return Promise.resolve();
@@ -138,7 +138,7 @@ FireInstallEvent = function() {
 FireActivateEvent = function() {
   var ev = new ActivateEvent();
   dispatchEvent(ev);
-  if (ev._promises && ev.length) {
+  if (Array.isArray(ev._promises)) {
     return Promise.all(ev._promises);
   } else {
     return Promise.resolve();
