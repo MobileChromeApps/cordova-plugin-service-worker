@@ -15,7 +15,8 @@ FetchEvent = function(eventInitDict) {
     }
   }
 };
-FetchEvent.prototype = new Event();
+FetchEvent.prototype = Object.create(Event.prototype);
+FetchEvent.constructor = FetchEvent;
 
 FetchEvent.prototype.respondWith = function(response) {
   // Prevent the default handler from running, so that it doesn't override this response.
@@ -28,7 +29,7 @@ FetchEvent.prototype.respondWith = function(response) {
   var convertAndHandle = function(response) {
     response.body = window.btoa(response.body);
     handleFetchResponse(requestId, response);
-  }
+  };
 
   // TODO: Find a better way to determine whether `response` is a promise.
   if (response.then) {
@@ -85,7 +86,7 @@ Request = function(method, url, headers) {
 
 Request.prototype.clone = function() {
   return new Request(this.method, this.url, this.headers);
-}
+};
 
 Response = function(body, url, status, headers) {
   this.body = body;
@@ -96,14 +97,14 @@ Response = function(body, url, status, headers) {
 
 Response.prototype.clone = function() {
   return new Response(this.body, this.url, this.status, this.headers);
-}
+};
 
 Response.prototype.toDict = function() {
   return {"body": window.btoa(this.body),
           "url": this.url,
           "status": this.status,
           "headers": this.headers};
-}
+};
 
 // This function returns a promise with a response for fetching the given resource.
 function fetch(input) {
@@ -125,7 +126,7 @@ function fetch(input) {
     var resolve = function(response) {
         var jsResponse = new Response(window.atob(response.body), response.url, response.status, response.headers);
         innerResolve(jsResponse);
-    }
+    };
 
     // Call a native function to fetch the resource.
     handleTrueFetch(method, url, headers, resolve, reject);

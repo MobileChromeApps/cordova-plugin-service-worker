@@ -1,4 +1,4 @@
-;EventQueue = {};
+EventQueue = {};
 var self=this;
 
 Event = function(type) {
@@ -10,7 +10,6 @@ Event = function(type) {
   this.canceled_ = false;
   this.initialized_ = false;
   this.dispatch_ = false;
-  return this;
 };
 
 Event.prototype.preventDefault = function() {
@@ -21,17 +20,17 @@ Event.prototype.preventDefault = function() {
 
 ExtendableEvent = function(type) {
   Event.call(this, type);
-  this.promises = null;
-  return this;
+  this._promises = null;
 };
 
-ExtendableEvent.prototype = new Event();
+ExtendableEvent.prototype = Object.create(Event.prototype);
+ExtendableEvent.constructor = ExtendableEvent;
 
 ExtendableEvent.prototype.waitUntil = function(promise) {
-  if (this.promises === null) {
-    this.promises = [];
+  if (this._promises === null) {
+    this._promises = [];
   }
-  this.promises.push(promise);
+  this._promises.push(promise);
 };
 
 
@@ -113,22 +112,24 @@ Object.defineProperty(this, 'onfetch', {
 
 
 InstallEvent = function() {
+  ExtendableEvent.call(this, 'install');
   this.activeWorker = null;
-  return this;
 };
-InstallEvent.prototype = new ExtendableEvent('install');
+InstallEvent.prototype = Object.create(ExtendableEvent.prototype);
+InstallEvent.constructor = InstallEvent;
 
 ActivateEvent = function() {
-  return this;
+  ExtendableEvent.call(this, 'activate');
 };
-ActivateEvent.prototype = new ExtendableEvent('activate');
+ActivateEvent.prototype = Object.create(ExtendableEvent.prototype);
+ActivateEvent.constructor = ActivateEvent;
 
 FireInstallEvent = function() {
   var ev = new InstallEvent();
   var InstallFailed;
   dispatchEvent(ev);
-  if (ev.promises instanceof Array) {
-    return Promise.all(ev.promises).then(null, function(err) { InstallFailed = true; });
+  if (Array.isArray(ev._promises)) {
+    return Promise.all(ev._promises).then(null, function(err) { InstallFailed = true; });
   } else {
     return Promise.resolve();
   }
@@ -137,8 +138,8 @@ FireInstallEvent = function() {
 FireActivateEvent = function() {
   var ev = new ActivateEvent();
   dispatchEvent(ev);
-  if (ev.promises instanceof Array) {
-    return Promise.all(ev.promises);
+  if (Array.isArray(ev._promises)) {
+    return Promise.all(ev._promises);
   } else {
     return Promise.resolve();
   }
