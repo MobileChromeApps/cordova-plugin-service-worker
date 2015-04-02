@@ -67,3 +67,12 @@ self.addEventListener('fetch', function(event) {
 * Service Worker uninstallation is unsupported.
 * IndexedDB is unsupported.
 
+## Release Notes
+
+### 1.0.1
+
+* Significantly enhanced version numbering.
+
+### 1.0.0
+
+* Initial release.
