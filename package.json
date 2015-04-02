@@ -1,0 +1,29 @@
+{
+  "name": "cordova-plugin-service-worker",
+  "version": "1.0.0",
+  "description": "Service Worker Plugin",
+  "cordova": {
+    "id": "cordova-plugin-service-worker",
+    "platforms": [
+      "ios"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MobileChromeApps/cordova-plugin-serviceworker.git"
+  },
+  "keywords": [
+    "cordova",
+    "serviceworker",
+    "service",
+    "worker",
+    "ecosystem:cordova",
+    "cordova-ios"
+  ],
+  "author": "The Chrome Team",
+  "license": "Apache 2.0",
+  "bugs": {
+    "url": "https://github.com/MobileChromeApps/cordova-plugin-serviceworker/issues"
+  },
+  "homepage": "https://github.com/MobileChromeApps/cordova-plugin-serviceworker"
+}

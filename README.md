@@ -1,6 +1,6 @@
 # Service Worker Plugin for iOS
 
-This plugin adds [ServiceWorker](https://github.com/slightlyoff/ServiceWorker) support to Cordova apps on iOS.  To use it:
+This plugin adds [Service Worker](https://github.com/slightlyoff/ServiceWorker) support to Cordova apps on iOS.  To use it:
 
 1. Install this plugin.
 2. Create `sw.js` in your `www/` directory.
@@ -63,6 +63,7 @@ self.addEventListener('fetch', function(event) {
 
 ## Caveats
 
-* Having multiple ServiceWorkers in your app is unsupported.
-* ServiceWorker uninstallation is unsupported.
+* Having multiple Service Workers in your app is unsupported.
+* Service Worker uninstallation is unsupported.
+* IndexedDB is unsupported.
 

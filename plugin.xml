@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-           id="org.apache.cordova.serviceworker"
+           id="cordova-plugin-service-worker"
       version="0.0.1-dev">
-    <name>ServiceWorker</name>
-    <description>ServiceWorker Plugin</description>
+    <name>Service Worker</name>
+    <description>Service Worker Plugin</description>
     <license>Apache 2.0</license>
-    <keywords>cordova,serviceworker</keywords>
+    <keywords>cordova,serviceworker,service,worker</keywords>
 
     <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
 
