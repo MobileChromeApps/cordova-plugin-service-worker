@@ -338,7 +338,7 @@ static NSString *rootPath_;
 {
     NSFileManager *fileManager = [[NSFileManager alloc] init];
     NSString *wwwDirectoryPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingString:@"/www"];
-    NSURL *wwwDirectoryUrl = [NSURL URLWithString:wwwDirectoryPath];
+    NSURL *wwwDirectoryUrl = [NSURL fileURLWithPath:wwwDirectoryPath isDirectory:YES];
     NSArray *keys = [NSArray arrayWithObject:NSURLIsDirectoryKey];
 
     NSDirectoryEnumerator *enumerator = [fileManager
