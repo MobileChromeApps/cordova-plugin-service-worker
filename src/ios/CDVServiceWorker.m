@@ -443,7 +443,7 @@ CDVServiceWorker *singletonInstance = nil; // TODO: Something better
             }
         }
     } else {
-        NSLog(@"No service worker script defined");
+        NSLog(@"No service worker script defined. Please add the following line to config.xml: <preference name=\"ServiceWorker\" value=\"[your-service-worker].js\" />");
     }
 }
 
