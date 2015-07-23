@@ -7,7 +7,7 @@
     <license>Apache 2.0</license>
     <keywords>cordova,serviceworker,service,worker</keywords>
 
-    <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
+    <dependency id="es6-promise-plugin" url="https://github.com/vstirbu/PromisesPlugin.git" />
 
     <!-- JS modules for use by the plugin (browser env) -->
     <js-module src="www/service_worker_container.js" name="ServiceWorkerContainer">
